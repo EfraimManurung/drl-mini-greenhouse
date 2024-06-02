@@ -4,6 +4,7 @@ import numpy as np
 import scipy.io as sio
 import matlab.engine
 import os
+import pandas as pd
 
 class MiniGreenhouse2(gym.Env):
     '''
@@ -25,6 +26,11 @@ class MiniGreenhouse2(gym.Env):
         # Define the path to your MATLAB script
         self.matlab_script_path = r'C:\Users\frm19\OneDrive - Wageningen University & Research\2. Thesis - Information Technology\3. Software Projects\drl-mini-greenhouse\matlab\DrlGlEnvironment.m'
 
+        # Initialize lists to store control values
+        self.ventilation_list = []
+        self.lamps_list = []
+        self.heater_list = []
+        
         # Check if the file exists
         if os.path.isfile(self.matlab_script_path):
             print(f"Running MATLAB script: {self.matlab_script_path}")
@@ -61,16 +67,22 @@ class MiniGreenhouse2(gym.Env):
             'lamps': np.zeros(2).reshape(-1, 1),
             'heater': np.zeros(2).reshape(-1, 1)
         }
+        
+         # Append controls to the lists twice
+        self.ventilation_list.extend(self.controls['ventilation'].flatten())
+        self.lamps_list.extend(self.controls['lamps'].flatten())
+        self.heater_list.extend(self.controls['heater'].flatten())
+    
         sio.savemat('controls.mat', self.controls)
 
-    def run_matlab_script(self, drl_indoor=None):
+    def run_matlab_script(self, indoor_file=None):
         '''
         Run the MATLAB script.
         '''
-        if drl_indoor is None:
-            drl_indoor = []
+        if indoor_file is None:
+            indoor_file = []
 
-        self.eng.DrlGlEnvironment(self.season_length, self.firstDay, 'controls.mat', drl_indoor, nargout=0)
+        self.eng.DrlGlEnvironment(self.season_length, self.firstDay, 'controls.mat', indoor_file, nargout=0)
 
     def load_mat_data(self):
         '''
@@ -101,7 +113,29 @@ class MiniGreenhouse2(gym.Env):
             self.fruit_dw = np.concatenate((self.fruit_dw, new_fruit_dw))
         
         # Add debug information to verify data loading
-        print(f"Loaded data lengths: time={len(self.time)}, co2_in={len(self.co2_in)}, temp_in={len(self.temp_in)}, rh_in={len(self.rh_in)}, PAR_in={len(self.PAR_in)}, fruit_dw={len(self.fruit_dw)}")
+        print(f"Loaded data lengths: time={len(self.time)}, co2_in={len(self.co2_in)}, temp_in={len(self.temp_in)}, rh_in={len(self.rh_in)}, PAR_in={len(self.PAR_in)}, fruit_dw={len(self.fruit_dw)}, ventilation={len(self.ventilation_list)}, lamps={len(self.lamps_list)}, heater={len(self.heater_list)}")
+
+    def print_all_data(self):
+        '''
+        Print all the appended data.
+        '''
+        print("")
+        print("")
+        print("-------------------------------------------------------------------------------------")
+        print("Print all the appended data.")
+        data = {
+            'Time': self.time,
+            'CO2 In': self.co2_in,
+            'Temperature In': self.temp_in,
+            'RH In': self.rh_in,
+            'PAR In': self.PAR_in,
+            'Fruit Dry Weight': self.fruit_dw,
+            'Ventilation': self.ventilation_list,
+            'Lamps': self.lamps_list,
+            'Heater': self.heater_list
+        }
+        df = pd.DataFrame(data)
+        print(df)
 
     def define_spaces(self):
         '''
@@ -155,8 +189,10 @@ class MiniGreenhouse2(gym.Env):
         bool: True if the episode is done, otherwise False.
         '''
         # Episode is done if we have reached the end of the data
-        # return self.current_step >= len(self.time) - 1
-        return self.current_step >= 5
+        if self.current_step >= 5:
+            self.print_all_data()
+            return True
+        return False
 
     def step(self, action):
         '''
@@ -187,6 +223,19 @@ class MiniGreenhouse2(gym.Env):
         # Ensure all arrays have the same length
         assert len(time_steps) == len(ventilation) == len(lamps) == len(heater), "Array lengths are not consistent"
 
+        # Append controls to the lists
+        # self.ventilation_list.append(ventilation)
+        # self.ventilation_list.append(ventilation)
+        # self.lamps_list.append(lamps)
+        # self.lamps_list.append(lamps)
+        # self.heater_list.append(heater)
+        # self.heater_list.append(heater)
+        
+        # Append controls to the lists twice
+        self.ventilation_list.extend(ventilation)
+        self.lamps_list.extend(lamps)
+        self.heater_list.extend(heater)
+
         # Create control dictionary
         controls = {
             'time': time_steps.reshape(-1, 1),
@@ -209,10 +258,10 @@ class MiniGreenhouse2(gym.Env):
         
         # Update the MATLAB environment with the current state
         drl_indoor = {
-            'time': time_steps.reshape(-1, 1),
-            'temp_in': self.temp_in,
-            'rh_in': self.rh_in,
-            'co2_in': self.co2_in
+            'time': self.time[-2:].astype(float).reshape(-1, 1),
+            'temp_in': self.temp_in[-2:].astype(float).reshape(-1, 1),
+            'rh_in': self.rh_in[-2:].astype(float).reshape(-1, 1),
+            'co2_in': self.co2_in[-2:].astype(float).reshape(-1, 1)
         }
         
         # Save control variables to .mat file
@@ -235,6 +284,7 @@ class MiniGreenhouse2(gym.Env):
         truncated = False
         
         return self.observation(), reward, done, truncated, {}
+
 
     # Ensure to properly close the MATLAB engine when the environment is no longer used
     def __del__(self):

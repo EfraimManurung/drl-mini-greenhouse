@@ -1,4 +1,4 @@
-function DrlGlEnvironment(seasonLength, firstDay, controlsFile, drl_indoor)    
+function DrlGlEnvironment(seasonLength, firstDay, controlsFile, indoorFile)    
     % Use for the environment in the DRL environment
     % Using createGreenLightModel
     %
@@ -35,14 +35,36 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, drl_indoor)
     if size(controls_drl, 1) ~= size(controls_iot, 1)
         error('The control arrays from the .mat file do not match the expected length.');
     end
-
+    
     % Change controls for the controls_iot from the controls_drl
     controls_iot(:,4) = controls_drl(:,2);  % Average roof ventilation aperture
     controls_iot(:,7) = controls_drl(:,3);  % Toplights on/off
     controls_iot(:,10) = controls_drl(:,4); % Boiler value
 
-    % Change 
+    % Change drl_indoor with appropriate unit
+    %   indoor          (optional) A 3 column matrix with:
+    %       indoor(:,1)     timestamps of the input [s] in regular intervals of 300, starting with 0
+    %       indoor(:,2)     temperature       [°C]             indoor air temperature
+    %       indoor(:,3)     vapor pressure    [Pa]             indoor vapor concentration
+    %       indoor(:,4)     co2 concentration [mg m^{-3}]      indoor vapor concentration%
+    % Check if drl_indoor is empty
     
+    if isempty(indoorFile)
+        drl_indoor = [];
+    else
+        % Load DRL controls from the .mat file
+        indoor_file = load(indoorFile);
+        drl_indoor = [indoor_file.time, indoor_file.temp_in, indoor_file.rh_in, indoor_file.co2_in];
+
+        % Convert relative humidity to vapor pressure and CO2 ppm to density
+        % drl_indoor(:,2) = double(drl_indoor(:,2)); % Ensure temperature is double
+        % drl_indoor(:,3) = double(drl_indoor(:,3)); % Ensure RH is double
+        % drl_indoor(:,4) = double(drl_indoor(:,4)); % Ensure CO2 is double
+
+        drl_indoor(:,3) = rh2vaporDens(drl_indoor(:,2), drl_indoor(:,3));
+        drl_indoor(:,4) = co2ppm2dens(drl_indoor(:,2), drl_indoor(:,4));
+    end
+
     % DynamicElements for the measured data
     v.tAir = DynamicElement('v.tAir', [floor(indoor_iot(:,1)) indoor_iot(:,2)]);
     v.rhAir = DynamicElement('v.rhAir', [floor(indoor_iot(:,1)) indoor_iot(:,3)]);

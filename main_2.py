@@ -6,7 +6,7 @@ env = MiniGreenhouse2(env_config)
 observation, _ = env.reset()
 done = False
 
-# env.done(10)
+#env.done(10)
 
 while not done:
     action = env.action_space.sample()
