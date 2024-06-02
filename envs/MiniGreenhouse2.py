@@ -74,12 +74,29 @@ class MiniGreenhouse2(gym.Env):
         Load data from the .mat file.
         '''
         data = sio.loadmat("drl-env.mat")
-        self.time = data['time'].flatten()
-        self.co2_in = data['co2_in'].flatten()
-        self.temp_in = data['temp_in'].flatten()
-        self.rh_in = data['rh_in'].flatten()
-        self.PAR_in = data['PAR_in'].flatten()
-        self.fruit_dw = data['fruit_dw'].flatten()
+        new_time = data['time'].flatten()
+        new_co2_in = data['co2_in'].flatten()
+        new_temp_in = data['temp_in'].flatten()
+        new_rh_in = data['rh_in'].flatten()
+        new_PAR_in = data['PAR_in'].flatten()
+        new_fruit_dw = data['fruit_dw'].flatten()
+        
+        # Check if attributes exist, if not initialize them
+        if not hasattr(self, 'time'):
+            self.time = new_time
+            self.co2_in = new_co2_in
+            self.temp_in = new_temp_in
+            self.rh_in = new_rh_in
+            self.PAR_in = new_PAR_in
+            self.fruit_dw = new_fruit_dw
+        else:
+            self.time = np.concatenate((self.time, new_time))
+            self.co2_in = np.concatenate((self.co2_in, new_co2_in))
+            self.temp_in = np.concatenate((self.temp_in, new_temp_in))
+            self.rh_in = np.concatenate((self.rh_in, new_rh_in))
+            self.PAR_in = np.concatenate((self.PAR_in, new_PAR_in))
+            self.fruit_dw = np.concatenate((self.fruit_dw, new_fruit_dw))
+        
         # Add debug information to verify data loading
         print(f"Loaded data lengths: time={len(self.time)}, co2_in={len(self.co2_in)}, temp_in={len(self.temp_in)}, rh_in={len(self.rh_in)}, PAR_in={len(self.PAR_in)}, fruit_dw={len(self.fruit_dw)}")
 
@@ -135,7 +152,8 @@ class MiniGreenhouse2(gym.Env):
         bool: True if the episode is done, otherwise False.
         '''
         # Episode is done if we have reached the end of the data
-        return self.current_step >= len(self.time) - 1
+        # return self.current_step >= len(self.time) - 1
+        return self.current_step >= 10
 
     def step(self, action):
         '''
@@ -158,24 +176,14 @@ class MiniGreenhouse2(gym.Env):
         toplighting = 1 if action[1] >= 0.5 else 0
         heating = 1 if action[2] >= 0.5 else 0
         
-        # Determine the number of remaining steps
-        remaining_steps = len(self.time) - self.current_step
+        # Initialize control arrays
+        # time_steps = self.time[self.current_step:self.current_step + 2]
         
-        # Check if there are enough time steps left
-        if remaining_steps < 2:
-            # If not enough steps remain, fill the remaining steps with zeros or terminate early
-            time_steps = np.zeros(2)
-            ventilation = np.zeros(2)
-            lamps = np.zeros(2)
-            heater = np.zeros(2)
-            done = True  # Terminate the episode early
-        else:
-            # Initialize control arrays
-            time_steps = self.time[self.current_step:self.current_step + 2]
-            ventilation = np.full(2, fan)
-            lamps = np.full(2, toplighting)
-            heater = np.full(2, heating)
-            done = False  # Continue the episode
+        time_steps = np.linspace(0, 300, 2)  # 10 minutes (600 seconds)
+        ventilation = np.full(2, fan)
+        lamps = np.full(2, toplighting)
+        heater = np.full(2, heating)
+        done = False  # Continue the episode
         
         # Ensure all arrays have the same length
         assert len(time_steps) == len(ventilation) == len(lamps) == len(heater), "Array lengths are not consistent"
