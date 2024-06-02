@@ -36,7 +36,7 @@ class MiniGreenhouse2(gym.Env):
             print(f"Running MATLAB script: {self.matlab_script_path}")
             
             # Define the season length parameter
-            self.season_length = 1 / 144  # 10 minutes
+            self.season_length = 2 / 144  # 15 minutes
             self.firstDay = 6
             
             # Initialize control variables to zero for 2 timesteps
@@ -60,12 +60,12 @@ class MiniGreenhouse2(gym.Env):
         '''
         Initialize control variables.
         '''
-        time_steps = np.linspace(0, 300, 2)  # 10 minutes (600 seconds)
+        time_steps = np.linspace(300, 1200, 4)  # 10 minutes (600 seconds)
         self.controls = {
             'time': time_steps.reshape(-1, 1),
-            'ventilation': np.zeros(2).reshape(-1, 1),
-            'lamps': np.zeros(2).reshape(-1, 1),
-            'heater': np.zeros(2).reshape(-1, 1)
+            'ventilation': np.zeros(4).reshape(-1, 1),
+            'lamps': np.zeros(4).reshape(-1, 1),
+            'heater': np.zeros(4).reshape(-1, 1)
         }
         
          # Append controls to the lists twice
@@ -189,7 +189,7 @@ class MiniGreenhouse2(gym.Env):
         bool: True if the episode is done, otherwise False.
         '''
         # Episode is done if we have reached the end of the data
-        if self.current_step >= 5:
+        if self.current_step >= 6:
             self.print_all_data()
             return True
         return False
@@ -215,10 +215,10 @@ class MiniGreenhouse2(gym.Env):
         toplighting = 1 if action[1] >= 0.5 else 0
         heating = 1 if action[2] >= 0.5 else 0
         
-        time_steps = np.linspace(0, 300, 2)  # 10 minutes (600 seconds)
-        ventilation = np.full(2, fan)
-        lamps = np.full(2, toplighting)
-        heater = np.full(2, heating)
+        time_steps = np.linspace(300, 1200, 4)  # 10 minutes (600 seconds)
+        ventilation = np.full(4, fan)
+        lamps = np.full(4, toplighting)
+        heater = np.full(4, heating)
         
         # Ensure all arrays have the same length
         assert len(time_steps) == len(ventilation) == len(lamps) == len(heater), "Array lengths are not consistent"
@@ -253,15 +253,15 @@ class MiniGreenhouse2(gym.Env):
         print("CURRENT STEPS: ", self.current_step)
 
         # Update the season_length and firstDay
-        self.season_length = 1 / 144
-        self.firstDay += 1 / 144
+        self.season_length = 2 / 144
+        self.firstDay += 2 / 144
         
-        # Update the MATLAB environment with the current state
+        # Update the MATLAB environment with the 3 latest current state
         drl_indoor = {
-            'time': self.time[-2:].astype(float).reshape(-1, 1),
-            'temp_in': self.temp_in[-2:].astype(float).reshape(-1, 1),
-            'rh_in': self.rh_in[-2:].astype(float).reshape(-1, 1),
-            'co2_in': self.co2_in[-2:].astype(float).reshape(-1, 1)
+            'time': self.time[-3:].astype(float).reshape(-1, 1),
+            'temp_in': self.temp_in[-3:].astype(float).reshape(-1, 1),
+            'rh_in': self.rh_in[-3:].astype(float).reshape(-1, 1),
+            'co2_in': self.co2_in[-3:].astype(float).reshape(-1, 1)
         }
         
         # Save control variables to .mat file

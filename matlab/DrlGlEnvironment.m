@@ -55,14 +55,16 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, indoorFile)
         % Load DRL controls from the .mat file
         indoor_file = load(indoorFile);
         drl_indoor = [indoor_file.time, indoor_file.temp_in, indoor_file.rh_in, indoor_file.co2_in];
-
-        % Convert relative humidity to vapor pressure and CO2 ppm to density
-        % drl_indoor(:,2) = double(drl_indoor(:,2)); % Ensure temperature is double
-        % drl_indoor(:,3) = double(drl_indoor(:,3)); % Ensure RH is double
-        % drl_indoor(:,4) = double(drl_indoor(:,4)); % Ensure CO2 is double
-
-        drl_indoor(:,3) = rh2vaporDens(drl_indoor(:,2), drl_indoor(:,3));
-        drl_indoor(:,4) = co2ppm2dens(drl_indoor(:,2), drl_indoor(:,4));
+        
+        %   indoor          (optional) A 3 column matrix with:
+        %       indoor(:,1)     timestamps of the input [s] in regular intervals of 300, starting with 0
+        %       indoor(:,2)     temperature       [°C]             indoor air temperature
+        %       indoor(:,3)     vapor pressure    [Pa]             indoor vapor concentration
+        %       indoor(:,4)     co2 concentration [mg m^{-3}]      indoor vapor concentration%
+        
+        rh2_vapor = rh2vaporDens(drl_indoor(:,2), drl_indoor(:,3));
+        drl_indoor(:,3) = vaporDens2pres(drl_indoor(:,2), rh2_vapor);
+        drl_indoor(:,4) = co2ppm2dens(drl_indoor(:,2), drl_indoor(:,4)) * 1000;
     end
 
     % DynamicElements for the measured data
