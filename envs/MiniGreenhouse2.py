@@ -63,11 +63,14 @@ class MiniGreenhouse2(gym.Env):
         }
         sio.savemat('controls.mat', self.controls)
 
-    def run_matlab_script(self):
+    def run_matlab_script(self, drl_indoor=None):
         '''
         Run the MATLAB script.
         '''
-        self.eng.DrlGlEnvironment(self.season_length, self.firstDay, 'controls.mat', nargout=0)
+        if drl_indoor is None:
+            drl_indoor = []
+
+        self.eng.DrlGlEnvironment(self.season_length, self.firstDay, 'controls.mat', drl_indoor, nargout=0)
 
     def load_mat_data(self):
         '''
@@ -153,7 +156,7 @@ class MiniGreenhouse2(gym.Env):
         '''
         # Episode is done if we have reached the end of the data
         # return self.current_step >= len(self.time) - 1
-        return self.current_step >= 10
+        return self.current_step >= 5
 
     def step(self, action):
         '''
@@ -176,14 +179,10 @@ class MiniGreenhouse2(gym.Env):
         toplighting = 1 if action[1] >= 0.5 else 0
         heating = 1 if action[2] >= 0.5 else 0
         
-        # Initialize control arrays
-        # time_steps = self.time[self.current_step:self.current_step + 2]
-        
         time_steps = np.linspace(0, 300, 2)  # 10 minutes (600 seconds)
         ventilation = np.full(2, fan)
         lamps = np.full(2, toplighting)
         heater = np.full(2, heating)
-        done = False  # Continue the episode
         
         # Ensure all arrays have the same length
         assert len(time_steps) == len(ventilation) == len(lamps) == len(heater), "Array lengths are not consistent"
@@ -195,11 +194,6 @@ class MiniGreenhouse2(gym.Env):
             'lamps': lamps.reshape(-1, 1),
             'heater': heater.reshape(-1, 1)
         }
-        
-        # Print dimensions for debugging
-        print("Control dimensions in step:")
-        for key, value in controls.items():
-            print(f"{key}: {value.shape}")
         
         # Save control variables to .mat file
         controls_file = 'controls.mat'
@@ -213,8 +207,19 @@ class MiniGreenhouse2(gym.Env):
         self.season_length = 1 / 144
         self.firstDay += 1 / 144
         
-        # Update the MATLAB environment
-        self.run_matlab_script()
+        # Update the MATLAB environment with the current state
+        drl_indoor = {
+            'time': time_steps.reshape(-1, 1),
+            'temp_in': self.temp_in,
+            'rh_in': self.rh_in,
+            'co2_in': self.co2_in
+        }
+        
+        # Save control variables to .mat file
+        indoor_file = 'indoor.mat'
+        sio.savemat(indoor_file, drl_indoor)
+        
+        self.run_matlab_script(indoor_file)
 
         # Load the updated data from the .mat file
         self.load_mat_data()

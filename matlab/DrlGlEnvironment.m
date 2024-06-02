@@ -1,4 +1,4 @@
-function DrlGlEnvironment(seasonLength, firstDay, controlsFile)    
+function DrlGlEnvironment(seasonLength, firstDay, controlsFile, drl_indoor)    
     % Use for the environment in the DRL environment
     % Using createGreenLightModel
     %
@@ -36,10 +36,12 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile)
         error('The control arrays from the .mat file do not match the expected length.');
     end
 
-    % Change controls for the controls_iot
+    % Change controls for the controls_iot from the controls_drl
     controls_iot(:,4) = controls_drl(:,2);  % Average roof ventilation aperture
     controls_iot(:,7) = controls_drl(:,3);  % Toplights on/off
     controls_iot(:,10) = controls_drl(:,4); % Boiler value
+
+    % Change 
     
     % DynamicElements for the measured data
     v.tAir = DynamicElement('v.tAir', [floor(indoor_iot(:,1)) indoor_iot(:,2)]);
@@ -60,7 +62,7 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile)
     
     % led = createGreenLightModel('led', outdoor_iot, startTime, controls, indoor_iot);
     % drl_env = createGreenLightModel(lampType, outdoor_iot, startTime, controls_drl);
-    drl_env = createGreenLightModel(lampType, outdoor_iot, startTime, controls_iot);
+    drl_env = createGreenLightModel(lampType, outdoor_iot, startTime, controls_iot, drl_indoor);
 
     % Parameters for mini-greenhouse
     setParamsMiniGreenhouse(drl_env);      % set greenhouse structure
