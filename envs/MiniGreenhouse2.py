@@ -12,7 +12,7 @@ class MiniGreenhouse2(gym.Env):
     and real mini-greenhouse.
     '''
    
-    def __init__(self, env_config):
+    def __init__(self, env_config, _first_day = 6):
         '''
         Initialize the MiniGreenhouse environment.
         
@@ -37,7 +37,7 @@ class MiniGreenhouse2(gym.Env):
             
             # Define the season length parameter
             self.season_length = 2 / 144  # 15 minutes
-            self.firstDay = 6
+            self.first_day = _first_day
             
             # Initialize control variables to zero for 2 timesteps
             self.init_controls()
@@ -82,7 +82,7 @@ class MiniGreenhouse2(gym.Env):
         if indoor_file is None:
             indoor_file = []
 
-        self.eng.DrlGlEnvironment(self.season_length, self.firstDay, 'controls.mat', indoor_file, nargout=0)
+        self.eng.DrlGlEnvironment(self.season_length, self.first_day, 'controls.mat', indoor_file, nargout=0)
 
     def load_mat_data(self):
         '''
@@ -252,9 +252,9 @@ class MiniGreenhouse2(gym.Env):
         self.current_step += 1
         print("CURRENT STEPS: ", self.current_step)
 
-        # Update the season_length and firstDay
+        # Update the season_length and first_day
         self.season_length = 2 / 144
-        self.firstDay += 2 / 144
+        self.first_day += 2 / 144
         
         # Update the MATLAB environment with the 3 latest current state
         drl_indoor = {

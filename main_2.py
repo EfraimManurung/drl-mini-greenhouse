@@ -3,7 +3,7 @@ from envs.MiniGreenhouse2 import MiniGreenhouse2
 env_config = {}
 
 # def __init__(self, env_config, time_multiplier):
-env = MiniGreenhouse2(env_config)
+env = MiniGreenhouse2(env_config, 6.5)
 
 observation, _ = env.reset()
 done = False

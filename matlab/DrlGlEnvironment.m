@@ -207,4 +207,4 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, indoorFile)
     end
 
     %% Clear the workspace
-    clear;
+    % clear;
