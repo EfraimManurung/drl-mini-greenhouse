@@ -1,3 +1,56 @@
+'''
+Deep Reinforcement Learning for mini-greenhouse 
+
+Author: Efraim Manurung
+MSc Thesis in Information Technology Group, Wageningen University
+
+efraim.efraimpartoginahotasi@wur.nl
+efraim.manurung@gmail.com
+
+You can pass either a string name or a Python class to specify an environment. 
+By default, strings will be interpreted as a gym environment name. 
+Custom env classes passed directly to the algorithm must take asingle env_config parameters
+in their constructor.
+
+Components of an environment:
+- Observation space
+- Action space
+- Rewards
+
+In Python we will need to implement, at least:
+- Constructor of MiniGreenhouse class
+- reset()
+- step()
+
+In practice, we may also want other methods, such as render() 
+to show the progress or other methods.
+
+the MiniGreenhouse class requirements:
+- convert .mat to JSON or CSV as the states (from observation)
+- 
+
+Table 1 Meaning of the state x(t), measurement y(t), control signal u(t) and disturbance d(t).
+----------------------------------------------------------------------------------------------------------------------------------
+ x1(t) Dry-weight (m2 / m-2)					 y1(t) Dry-weight (m2 / m-2) 
+ x2(t) Indoor CO2 (ppm)							 y2(t) Indoor CO2 (ppm)
+ x3(t) Indoor temperature (◦C)					 y3(t) Indoor temperature (◦C)
+ x4(t) Indoor humidity (%)						 y4(t) Indoor humidity (%)
+ x5(t) PAR Inside (W / m2)					     x5(t) PAR Inside (W / m2)
+----------------------------------------------------------------------------------------------------------------------------------
+ d1(t) Outside Radiation (W / m2)				 u1(t) Fan (-)
+ d2(t) Outdoor CO2 (ppm)						 u2(t) Toplighting status (-)
+ d3(t) Outdoor temperature (◦C)					 u3(t) Heating (-) 
+
+
+Project sources:
+- https://applied-rl-course.netlify.app/en/module3
+- https://docs.ray.io/en/latest/rllib/rllib-env.html#configuring-environments
+
+Other sources:
+- https://github.com/davkat1/GreenLight
+- 
+'''
+
 # Import Farama foundation's gymnasium
 import gymnasium as gym
 from gymnasium.spaces import Box
@@ -232,14 +285,6 @@ class MiniGreenhouse2(gym.Env):
         # Ensure all arrays have the same length
         assert len(time_steps) == len(ventilation) == len(lamps) == len(heater), "Array lengths are not consistent"
 
-        # Append controls to the lists
-        # self.ventilation_list.append(ventilation)
-        # self.ventilation_list.append(ventilation)
-        # self.lamps_list.append(lamps)
-        # self.lamps_list.append(lamps)
-        # self.heater_list.append(heater)
-        # self.heater_list.append(heater)
-        
         # Append controls to the lists twice
         self.ventilation_list.extend(ventilation)
         self.lamps_list.extend(lamps)
@@ -272,11 +317,18 @@ class MiniGreenhouse2(gym.Env):
         # co2ppm_to_dens Convert CO2 molar concetration [ppm] to density [kg m^{-3}]
         co2_density = self.service_functions.co2ppm_to_dens(self.temp_in[-3:], self.co2_in[-3:])
         
+        # Convert Relative Humidity (RH) to Pressure in Pa
+        # vapor_density = service_functions.rh2vaporDens(temp, rh)
+        # vapor_pressure = service_functions.vaporDens2pres(temp, vapor_density)
+        vapor_density = self.service_functions.rh_to_vapor_density(self.temp_in[-3:], self.rh_in[-3:])
+        vapor_pressure = self.service_functions.vapor_density_to_pressure(self.temp_in[-3:], vapor_density)
+        
         # Update the MATLAB environment with the 3 latest current state
         drl_indoor = {
             'time': self.time[-3:].astype(float).reshape(-1, 1),
             'temp_in': self.temp_in[-3:].astype(float).reshape(-1, 1),
-            'rh_in': self.rh_in[-3:].astype(float).reshape(-1, 1),
+            # 'rh_in': self.rh_in[-3:].astype(float).reshape(-1, 1),
+            'rh_in': vapor_pressure.reshape(-1, 1),
             # 'co2_in': self.co2_in[-3:].astype(float).reshape(-1, 1)
             'co2_in': co2_density.reshape(-1, 1) # Use the converted CO2 density
         }
