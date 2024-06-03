@@ -62,9 +62,17 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, indoorFile)
         %       indoor(:,3)     vapor pressure    [Pa]             indoor vapor concentration
         %       indoor(:,4)     co2 concentration [mg m^{-3}]      indoor vapor concentration%
         
+        % Convert vapor density [kg{H2O} m^{-3}] to vapor pressure [Pa]
         rh2_vapor = rh2vaporDens(drl_indoor(:,2), drl_indoor(:,3));
         drl_indoor(:,3) = vaporDens2pres(drl_indoor(:,2), rh2_vapor);
-        drl_indoor(:,4) = co2ppm2dens(drl_indoor(:,2), drl_indoor(:,4)) * 1000;
+        
+        % convert co2 from ppm to mg m^{-3}
+        % drl_indoor(:,4) = 1e6 * co2ppm2dens(drl_indoor(:,2), drl_indoor(:,4));
+        
+        % Print the converted CO2 concentration
+        disp('Converted CO2 concentration (mg m^{-3}):');
+        disp(drl_indoor(:,4));
+
     end
 
     % DynamicElements for the measured data

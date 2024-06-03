@@ -1,10 +1,16 @@
+# Import Farama foundation's gymnasium
 import gymnasium as gym
 from gymnasium.spaces import Box
+
+# Import supporting libraries
 import numpy as np
 import scipy.io as sio
 import matlab.engine
 import os
 import pandas as pd
+
+# Import service functions
+from utils.ServiceFunctions import ServiceFunctions
 
 class MiniGreenhouse2(gym.Env):
     '''
@@ -30,6 +36,9 @@ class MiniGreenhouse2(gym.Env):
         self.ventilation_list = []
         self.lamps_list = []
         self.heater_list = []
+        
+        # Initialize ServiceFunctions
+        self.service_functions = ServiceFunctions()
         
         # Check if the file exists
         if os.path.isfile(self.matlab_script_path):
@@ -151,7 +160,7 @@ class MiniGreenhouse2(gym.Env):
         Returns:
         int: The initial observation of the environment.
         '''
-        self.current_step = 0
+        self.current_step = 1 # Before is 0
         self.state = self.observation()
         return self.state, {}
 
@@ -250,18 +259,26 @@ class MiniGreenhouse2(gym.Env):
         
         # Increment the current step
         self.current_step += 1
+        print("")
+        print("")
+        print("----------------------------------")
         print("CURRENT STEPS: ", self.current_step)
 
         # Update the season_length and first_day
         self.season_length = 2 / 144
         self.first_day += 2 / 144
         
+        # Convert co2_in ppm
+        # co2ppm_to_dens Convert CO2 molar concetration [ppm] to density [kg m^{-3}]
+        co2_density = self.service_functions.co2ppm_to_dens(self.temp_in[-3:], self.co2_in[-3:])
+        
         # Update the MATLAB environment with the 3 latest current state
         drl_indoor = {
             'time': self.time[-3:].astype(float).reshape(-1, 1),
             'temp_in': self.temp_in[-3:].astype(float).reshape(-1, 1),
             'rh_in': self.rh_in[-3:].astype(float).reshape(-1, 1),
-            'co2_in': self.co2_in[-3:].astype(float).reshape(-1, 1)
+            # 'co2_in': self.co2_in[-3:].astype(float).reshape(-1, 1)
+            'co2_in': co2_density.reshape(-1, 1) # Use the converted CO2 density
         }
         
         # Save control variables to .mat file
