@@ -1,4 +1,4 @@
-function DrlGlEnvironment(seasonLength, firstDay, controlsFile, indoorFile)    
+function DrlGlEnvironment(seasonLength, firstDay, controlsFile, indoorFile, fruitFile)    
     % Use for the environment in the DRL environment
     % Using createGreenLightModel
     %
@@ -111,10 +111,34 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, indoorFile)
     % start with 3.12 plants/m2, assume they are each 2 g = 6240 mg/m2.
     % Check the setGlinit.m for more information
     % Default values    
-    drl_env.x.cLeaf.val = 0.7*6240;     
-    drl_env.x.cStem.val = 0.25*6240;    
-    drl_env.x.cFruit.val = 0.05*6240;   
-    
+    if isempty(fruitFile)
+        drl_env.x.cLeaf.val = 0.7*6240;     
+        drl_env.x.cStem.val = 0.25*6240;    
+        drl_env.x.cFruit.val = 0.05*6240;   
+    else 
+        % Load DRL controls from the .mat file
+        fruit_file = load(fruitFile);
+        
+        % Display the fields in fruit_file to verify their names
+        disp('Fields in fruit_file:');
+        disp(fieldnames(fruit_file));
+        disp('Fruit growth: ');
+        disp(fruit_file);
+        
+        % Ensure that the required fields exist in fruit_file
+        required_fields = {'time', 'fruit_leaf', 'fruit_stem', 'fruit_dw'};
+        for i = 1:length(required_fields)
+            if ~isfield(fruit_file, required_fields{i})
+                error(['The fruit file does not contain the required field: ', required_fields{i}]);
+            end
+        end
+        
+        % Assign the loaded fruit data to the corresponding fields in drl_env
+        drl_env.x.cLeaf.val = fruit_file.fruit_leaf;     
+        drl_env.x.cStem.val = fruit_file.fruit_stem;    
+        drl_env.x.cFruit.val = fruit_file.fruit_dw;
+    end
+
     % Default values
     % led.x.cLeaf.val = 0.01;     
     % led.x.cStem.val = 0.01;    
@@ -207,10 +231,17 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, indoorFile)
     rh_in = drl_env.a.rhIn.val(:, 2);          % Indoor humidity
     co2_in = drl_env.a.co2InPpm.val(:, 2);           % Indoor co2
     PAR_in = drl_env.a.rParGhSun.val(:, 2) + drl_env.a.rParGhLamp.val(:, 2); % PAR inside
+
+    % For fruit growth
+    % drl_env.x.cLeaf.val = 0.7*6240;     
+    % drl_env.x.cStem.val = 0.25*6240;    
+    % drl_env.x.cFruit.val = 0.05*6240;  
+    fruit_leaf = drl_env.x.cLeaf.val(:, 2); % Fruit leaf
+    fruit_stem = drl_env.x.cStem.val(:, 2); % Fruit stem
     fruit_dw = drl_env.x.cFruit.val(:, 2); % Fruit dry weight
     
     % Save the extracted data to a .mat file
-    save('drl-env.mat', 'time', 'temp_in', 'rh_in', 'co2_in', 'PAR_in', 'fruit_dw');
+    save('drl-env.mat', 'time', 'temp_in', 'rh_in', 'co2_in', 'PAR_in', 'fruit_leaf', 'fruit_stem', 'fruit_dw');
 
     %% Print the values in tabular format
     fprintf('Time (s)\tIndoor Temp (°C)\tIndoor Humidity (%%)\tIndoor CO2 (ppm)\tPAR Inside (W/m²)\tFruit Dry Weight (g/m²)\n');

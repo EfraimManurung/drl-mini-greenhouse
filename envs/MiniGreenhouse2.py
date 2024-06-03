@@ -71,13 +71,15 @@ class MiniGreenhouse2(gym.Env):
     and real mini-greenhouse.
     '''
    
-    def __init__(self, env_config, _first_day = 6):
+    def __init__(self, env_config, _first_day = 6, _iteration2 = 6):
         '''
         Initialize the MiniGreenhouse environment.
         
         Parameters:
         env_config(dict): Configuration dictionary for the environment.
         '''  
+        # Initiate iteration
+        self._iteration = _iteration2
         
         # Start MATLAB engine
         self.eng = matlab.engine.start_matlab()
@@ -137,26 +139,43 @@ class MiniGreenhouse2(gym.Env):
     
         sio.savemat('controls.mat', self.controls)
 
-    def run_matlab_script(self, indoor_file=None):
+    def run_matlab_script(self, indoor_file=None, fruit_file=None):
         '''
         Run the MATLAB script.
         '''
+        
+        # Check if the indoor_file or fruit_file is None
         if indoor_file is None:
             indoor_file = []
+        
+        if fruit_file is None:
+            fruit_file = []
 
-        self.eng.DrlGlEnvironment(self.season_length, self.first_day, 'controls.mat', indoor_file, nargout=0)
+        self.eng.DrlGlEnvironment(self.season_length, self.first_day, 'controls.mat', indoor_file, fruit_file, nargout=0)
 
     def load_mat_data(self):
         '''
         Load data from the .mat file.
+        
+        From matlab, the structure is:
+        
+        save('drl-env.mat', 'time', 'temp_in', 'rh_in', 'co2_in', 'PAR_in', 'fruit_leaf', 'fruit_stem', 'fruit_dw');
         '''
+        
         data = sio.loadmat("drl-env.mat")
         new_time = data['time'].flatten()
         new_co2_in = data['co2_in'].flatten()
         new_temp_in = data['temp_in'].flatten()
         new_rh_in = data['rh_in'].flatten()
         new_PAR_in = data['PAR_in'].flatten()
+        new_fruit_leaf = data['fruit_leaf'].flatten()
+        new_fruit_stem = data['fruit_stem'].flatten()
         new_fruit_dw = data['fruit_dw'].flatten()
+        
+        # Print updates
+        print(f"Updating data - new lengths: time={len(new_time)}, co2_in={len(new_co2_in)}, "
+            f"temp_in={len(new_temp_in)}, rh_in={len(new_rh_in)}, PAR_in={len(new_PAR_in)}, "
+            f"fruit_leaf={len(new_fruit_leaf)}, fruit_stem={len(new_fruit_stem)}, fruit_dw={len(new_fruit_dw)}")
         
         # Check if attributes exist, if not initialize them
         if not hasattr(self, 'time'):
@@ -165,6 +184,8 @@ class MiniGreenhouse2(gym.Env):
             self.temp_in = new_temp_in
             self.rh_in = new_rh_in
             self.PAR_in = new_PAR_in
+            self.fruit_leaf = new_fruit_leaf
+            self.fruit_stem = new_fruit_stem
             self.fruit_dw = new_fruit_dw
         else:
             self.time = np.concatenate((self.time, new_time))
@@ -172,10 +193,18 @@ class MiniGreenhouse2(gym.Env):
             self.temp_in = np.concatenate((self.temp_in, new_temp_in))
             self.rh_in = np.concatenate((self.rh_in, new_rh_in))
             self.PAR_in = np.concatenate((self.PAR_in, new_PAR_in))
+            self.fruit_leaf = np.concatenate((self.fruit_leaf, new_fruit_leaf))
+            self.fruit_stem = np.concatenate((self.fruit_stem, new_fruit_stem))
             self.fruit_dw = np.concatenate((self.fruit_dw, new_fruit_dw))
         
         # Add debug information to verify data loading
-        print(f"Loaded data lengths: time={len(self.time)}, co2_in={len(self.co2_in)}, temp_in={len(self.temp_in)}, rh_in={len(self.rh_in)}, PAR_in={len(self.PAR_in)}, fruit_dw={len(self.fruit_dw)}, ventilation={len(self.ventilation_list)}, lamps={len(self.lamps_list)}, heater={len(self.heater_list)}")
+        print(
+            f"Loaded data lengths: time={len(self.time)}, co2_in={len(self.co2_in)}, "
+            f"temp_in={len(self.temp_in)}, rh_in={len(self.rh_in)}, PAR_in={len(self.PAR_in)}, "
+            f"fruit_leaf={len(self.fruit_leaf)}, fruit_stem={len(self.fruit_stem)}, fruit_dw={len(self.fruit_dw)}, "
+            f"ventilation={len(self.ventilation_list)}, lamps={len(self.lamps_list)}, heater={len(self.heater_list)}"
+        )
+        
 
     def print_all_data(self):
         '''
@@ -185,17 +214,32 @@ class MiniGreenhouse2(gym.Env):
         print("")
         print("-------------------------------------------------------------------------------------")
         print("Print all the appended data.")
+        # Print lengths of each list to identify discrepancies
+        print(f"Length of Time: {len(self.time)}")
+        print(f"Length of CO2 In: {len(self.co2_in)}")
+        print(f"Length of Temperature In: {len(self.temp_in)}")
+        print(f"Length of RH In: {len(self.rh_in)}")
+        print(f"Length of PAR In: {len(self.PAR_in)}")
+        print(f"Length of Fruit leaf: {len(self.fruit_leaf)}")
+        print(f"Length of Fruit stem: {len(self.fruit_stem)}")
+        print(f"Length of Fruit Dry Weight: {len(self.fruit_dw)}")
+        print(f"Length of Ventilation: {len(self.ventilation_list)}")
+        print(f"Length of Lamps: {len(self.lamps_list)}")
+        print(f"Length of Heater: {len(self.heater_list)}")
         data = {
             'Time': self.time,
             'CO2 In': self.co2_in,
             'Temperature In': self.temp_in,
             'RH In': self.rh_in,
             'PAR In': self.PAR_in,
+            'Fruit leaf': self.fruit_leaf,
+            'Fruit stem': self.fruit_stem,
             'Fruit Dry Weight': self.fruit_dw,
             'Ventilation': self.ventilation_list,
             'Lamps': self.lamps_list,
             'Heater': self.heater_list
         }
+        
         df = pd.DataFrame(data)
         print(df)
 
@@ -229,6 +273,8 @@ class MiniGreenhouse2(gym.Env):
             self.temp_in[self.current_step],
             self.rh_in[self.current_step],
             self.PAR_in[self.current_step],
+            self.fruit_leaf[self.current_step],
+            self.fruit_stem[self.current_step],
             self.fruit_dw[self.current_step]
         ], dtype=np.float32)
 
@@ -251,7 +297,7 @@ class MiniGreenhouse2(gym.Env):
         bool: True if the episode is done, otherwise False.
         '''
         # Episode is done if we have reached the end of the data
-        if self.current_step >= 6:
+        if self.current_step >= self._iteration:
             self.print_all_data()
             return True
         return False
@@ -272,6 +318,7 @@ class MiniGreenhouse2(gym.Env):
         Returns: 
         tuple: A tuple containing the new observation, reward, done flag, and additional info.
         '''
+        
         # Convert actions to discrete values
         fan = 1 if action[0] >= 0.5 else 0
         toplighting = 1 if action[1] >= 0.5 else 0
@@ -318,8 +365,6 @@ class MiniGreenhouse2(gym.Env):
         co2_density = self.service_functions.co2ppm_to_dens(self.temp_in[-3:], self.co2_in[-3:])
         
         # Convert Relative Humidity (RH) to Pressure in Pa
-        # vapor_density = service_functions.rh2vaporDens(temp, rh)
-        # vapor_pressure = service_functions.vaporDens2pres(temp, vapor_density)
         vapor_density = self.service_functions.rh_to_vapor_density(self.temp_in[-3:], self.rh_in[-3:])
         vapor_pressure = self.service_functions.vapor_density_to_pressure(self.temp_in[-3:], vapor_density)
         
@@ -327,17 +372,27 @@ class MiniGreenhouse2(gym.Env):
         drl_indoor = {
             'time': self.time[-3:].astype(float).reshape(-1, 1),
             'temp_in': self.temp_in[-3:].astype(float).reshape(-1, 1),
-            # 'rh_in': self.rh_in[-3:].astype(float).reshape(-1, 1),
             'rh_in': vapor_pressure.reshape(-1, 1),
-            # 'co2_in': self.co2_in[-3:].astype(float).reshape(-1, 1)
-            'co2_in': co2_density.reshape(-1, 1) # Use the converted CO2 density
+            'co2_in': co2_density.reshape(-1, 1)
         }
         
         # Save control variables to .mat file
         indoor_file = 'indoor.mat'
         sio.savemat(indoor_file, drl_indoor)
         
-        self.run_matlab_script(indoor_file)
+        # Update the fruit growth with the 1 latest current state
+        fruit_growth = {
+            'time': self.time[-1:].astype(float).reshape(-1, 1),
+            'fruit_leaf': self.fruit_leaf[-1:].astype(float).reshape(-1, 1),
+            'fruit_stem': self.fruit_stem[-1:].astype(float).reshape(-1, 1),
+            'fruit_dw': self.fruit_dw[-1:].astype(float).reshape(-1, 1)
+        }
+        
+        # Save the fruit growth to .mat file
+        fruit_file = 'fruit.mat'
+        sio.savemat(fruit_file, fruit_growth)
+        
+        self.run_matlab_script(indoor_file, fruit_file)
 
         # Load the updated data from the .mat file
         self.load_mat_data()
