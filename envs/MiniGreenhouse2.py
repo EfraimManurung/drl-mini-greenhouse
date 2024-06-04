@@ -124,7 +124,7 @@ class MiniGreenhouse2(gym.Env):
         '''
         Initialize control variables.
         '''
-        time_steps = np.linspace(300, 1200, 4)  # 10 minutes (600 seconds)
+        time_steps = np.linspace(300, 1200, 4)  # 20 minutes (1200 seconds)
         self.controls = {
             'time': time_steps.reshape(-1, 1),
             'ventilation': np.zeros(4).reshape(-1, 1),
@@ -132,10 +132,15 @@ class MiniGreenhouse2(gym.Env):
             'heater': np.zeros(4).reshape(-1, 1)
         }
         
-         # Append controls to the lists twice
-        self.ventilation_list.extend(self.controls['ventilation'].flatten())
-        self.lamps_list.extend(self.controls['lamps'].flatten())
-        self.heater_list.extend(self.controls['heater'].flatten())
+        # Append controls to the lists twice
+        # self.ventilation_list.extend(self.controls['ventilation'].flatten())
+        # self.lamps_list.extend(self.controls['lamps'].flatten())
+        # self.heater_list.extend(self.controls['heater'].flatten())
+        
+        # Append only the latest 3 values from each control variable
+        self.ventilation_list.extend(self.controls['ventilation'].flatten()[-3:])
+        self.lamps_list.extend(self.controls['lamps'].flatten()[-3:])
+        self.heater_list.extend(self.controls['heater'].flatten()[-3:])
     
         sio.savemat('controls.mat', self.controls)
 
@@ -163,14 +168,14 @@ class MiniGreenhouse2(gym.Env):
         '''
         
         data = sio.loadmat("drl-env.mat")
-        new_time = data['time'].flatten()
-        new_co2_in = data['co2_in'].flatten()
-        new_temp_in = data['temp_in'].flatten()
-        new_rh_in = data['rh_in'].flatten()
-        new_PAR_in = data['PAR_in'].flatten()
-        new_fruit_leaf = data['fruit_leaf'].flatten()
-        new_fruit_stem = data['fruit_stem'].flatten()
-        new_fruit_dw = data['fruit_dw'].flatten()
+        new_time = data['time'].flatten()[-3:]
+        new_co2_in = data['co2_in'].flatten()[-3:]
+        new_temp_in = data['temp_in'].flatten()[-3:]
+        new_rh_in = data['rh_in'].flatten()[-3:]
+        new_PAR_in = data['PAR_in'].flatten()[-3:]
+        new_fruit_leaf = data['fruit_leaf'].flatten()[-3:]
+        new_fruit_stem = data['fruit_stem'].flatten()[-3:]
+        new_fruit_dw = data['fruit_dw'].flatten()[-3:]
         
         # Print updates
         print(f"Updating data - new lengths: time={len(new_time)}, co2_in={len(new_co2_in)}, "
@@ -242,6 +247,17 @@ class MiniGreenhouse2(gym.Env):
         
         df = pd.DataFrame(data)
         print(df)
+        
+        time_max = self._iteration * 900 # for e.g. 4 steps * 900 (15 minutes) = 60 minutes
+        time_steps_plot = np.linspace(300, time_max, self._iteration * 3)  
+        print("time_steps_plot :", time_steps_plot)
+        
+        # Show all the data in figures
+        self.service_functions.plot_all_data(time_steps_plot, self.co2_in, self.temp_in, self.rh_in, \
+                                            self.PAR_in, self.fruit_leaf, self.fruit_stem, \
+                                            self.fruit_dw, self.ventilation_list, self.lamps_list, \
+                                            self.heater_list)
+
 
     def define_spaces(self):
         '''
@@ -324,7 +340,7 @@ class MiniGreenhouse2(gym.Env):
         toplighting = 1 if action[1] >= 0.5 else 0
         heating = 1 if action[2] >= 0.5 else 0
         
-        time_steps = np.linspace(300, 1200, 4)  # 10 minutes (600 seconds)
+        time_steps = np.linspace(300, 1200, 4) 
         ventilation = np.full(4, fan)
         lamps = np.full(4, toplighting)
         heater = np.full(4, heating)
@@ -333,9 +349,19 @@ class MiniGreenhouse2(gym.Env):
         assert len(time_steps) == len(ventilation) == len(lamps) == len(heater), "Array lengths are not consistent"
 
         # Append controls to the lists twice
-        self.ventilation_list.extend(ventilation)
-        self.lamps_list.extend(lamps)
-        self.heater_list.extend(heater)
+        # self.ventilation_list.extend(ventilation)
+        # self.lamps_list.extend(lamps)
+        # self.heater_list.extend(heater)
+        
+        # Keep only the latest 3 data points before appending
+        latest_ventilation = ventilation[-3:].tolist()
+        latest_lamps = lamps[-3:].tolist()
+        latest_heater = heater[-3:].tolist()
+
+        # Append controls to the lists
+        self.ventilation_list.extend(latest_ventilation)
+        self.lamps_list.extend(latest_lamps)
+        self.heater_list.extend(latest_heater)
 
         # Create control dictionary
         controls = {
