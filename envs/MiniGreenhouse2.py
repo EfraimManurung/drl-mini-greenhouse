@@ -372,6 +372,7 @@ class MiniGreenhouse2(gym.Env):
         drl_indoor = {
             'time': self.time[-3:].astype(float).reshape(-1, 1),
             'temp_in': self.temp_in[-3:].astype(float).reshape(-1, 1),
+            # 'rh_in': self.rh_in[-3:].astype(float).reshape(-1, 1),
             'rh_in': vapor_pressure.reshape(-1, 1),
             'co2_in': co2_density.reshape(-1, 1)
         }
