@@ -61,6 +61,7 @@ import scipy.io as sio
 import matlab.engine
 import os
 import pandas as pd
+from datetime import timedelta
 
 # Import service functions
 from utils.ServiceFunctions import ServiceFunctions
@@ -210,7 +211,6 @@ class MiniGreenhouse2(gym.Env):
             f"ventilation={len(self.ventilation_list)}, lamps={len(self.lamps_list)}, heater={len(self.heater_list)}"
         )
         
-
     def print_all_data(self):
         '''
         Print all the appended data.
@@ -249,15 +249,16 @@ class MiniGreenhouse2(gym.Env):
         print(df)
         
         time_max = self._iteration * 900 # for e.g. 4 steps * 900 (15 minutes) = 60 minutes
-        time_steps_plot = np.linspace(300, time_max, self._iteration * 3)  
-        print("time_steps_plot :", time_steps_plot)
+        time_steps_seconds = np.linspace(300, time_max, self._iteration * 3)  # Time steps in seconds
+        time_steps_hours = time_steps_seconds / 3600  # Convert seconds to hours
+        time_steps_formatted = [str(timedelta(hours=h))[:-3] for h in time_steps_hours]  # Format to HH:MM
+        print("time_steps_plot (in HH:MM format):", time_steps_formatted)
         
         # Show all the data in figures
-        self.service_functions.plot_all_data(time_steps_plot, self.co2_in, self.temp_in, self.rh_in, \
+        self.service_functions.plot_all_data(time_steps_formatted, self.co2_in, self.temp_in, self.rh_in, \
                                             self.PAR_in, self.fruit_leaf, self.fruit_stem, \
                                             self.fruit_dw, self.ventilation_list, self.lamps_list, \
                                             self.heater_list)
-
 
     def define_spaces(self):
         '''
@@ -435,7 +436,6 @@ class MiniGreenhouse2(gym.Env):
         truncated = False
         
         return self.observation(), reward, done, truncated, {}
-
 
     # Ensure to properly close the MATLAB engine when the environment is no longer used
     def __del__(self):

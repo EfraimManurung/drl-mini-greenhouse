@@ -154,67 +154,37 @@ class ServiceFunctions:
         df = pd.DataFrame(data)
 
         # Create subplots
-        fig, axes = plt.subplots(nrows=6, ncols=2, figsize=(15, 25))
+        fig, axes = plt.subplots(nrows=5, ncols=2, figsize=(15, 25))
         fig.tight_layout(pad=5.0)
-        
-        # Adjust layout to create more space between plots
-        plt.subplots_adjust(hspace=0.5, wspace=0.3)
-        
+
         # Adjust layout to create more space between plots
         plt.subplots_adjust(hspace=0.5, wspace=0.3)
 
         # Plot each variable
-        for ax in axes.flat:
-            ax.tick_params(axis='both', labelsize=8)
+        plot_order = [
+            ('CO2 In', 'CO2 [ppm]', co2_in),
+            ('RH In', 'Relative Humidity [%]', rh_in),
+            ('Temperature In', 'Temperature [°C]', temp_in),
+            ('PAR In', 'PAR [W/m²]', par_in),
+            ('Ventilation', 'Control Signal [-]', ventilation),
+            ('Lamps', 'Control Signal [-]', lamps),
+            ('Heater', 'Control Signal [-]', heater),
+            ('Fruit Leaf', r'Dry-weight [mg (CH$_2$O) m$^{-2}$]', fruit_leaf),
+            ('Fruit Stem', r'Dry-weight [mg (CH$_2$O) m$^{-2}$]', fruit_stem),
+            ('Fruit Dry Weight', r'Dry-weight [mg (CH$_2$O) m$^{-2}$]', fruit_dw)
+        ]
 
-        # Plot each variable
-        axes[0, 0].plot(df['Time'], df['CO2 In'])
-        axes[0, 0].set_title('CO2 In', fontsize=8)
-        axes[0, 0].set_ylabel('CO2 [ppm]', fontsize=8)
-
-        axes[0, 1].plot(df['Time'], df['Temperature In'])
-        axes[0, 1].set_title('Temperature In', fontsize=8)
-        axes[0, 1].set_ylabel('Temperature [°C]', fontsize=8)
-
-        axes[1, 0].plot(df['Time'], df['RH In'])
-        axes[1, 0].set_title('RH In', fontsize=8)
-        axes[1, 0].set_ylabel('Relative Humidity [%]', fontsize=8)
-
-        axes[1, 1].plot(df['Time'], df['PAR In'])
-        axes[1, 1].set_title('PAR In', fontsize=8)
-        axes[1, 1].set_ylabel('PAR [W/m²]', fontsize=8)
-
-        axes[2, 0].plot(df['Time'], df['Fruit leaf'])
-        axes[2, 0].set_title('Fruit Leaf', fontsize=8)
-        axes[2, 0].set_ylabel(r'Dry-weight [mg (CH$_2$O) m$^{-2}$]', fontsize=8)
-
-        axes[2, 1].plot(df['Time'], df['Fruit stem'])
-        axes[2, 1].set_title('Fruit Stem', fontsize=8)
-        axes[2, 1].set_ylabel(r'Dry-weight [mg (CH$_2$O) m$^{-2}$]', fontsize=8)
-
-        axes[3, 0].plot(df['Time'], df['Fruit Dry Weight'])
-        axes[3, 0].set_title('Fruit Dry Weight', fontsize=8)
-        axes[3, 0].set_ylabel(r'Dry-weight [mg (CH$_2$O) m$^{-2}$]', fontsize=8)
-
-        axes[3, 1].plot(df['Time'], df['Ventilation'])
-        axes[3, 1].set_title('Ventilation', fontsize=8)
-        axes[3, 1].set_ylabel('Control Signal [-]', fontsize=8)
-
-        axes[4, 0].plot(df['Time'], df['Lamps'])
-        axes[4, 0].set_title('Lamps', fontsize=8)
-        axes[4, 0].set_ylabel('Control Signal [-]', fontsize=8)
-
-        axes[4, 1].plot(df['Time'], df['Heater'])
-        axes[4, 1].set_title('Heater', fontsize=8)
-        axes[4, 1].set_ylabel('Control Signal [-]', fontsize=8)
+        # Plot the data in the specified order
+        for i, (title, ylabel, data) in enumerate(plot_order):
+            row, col = divmod(i, 2)
+            axes[row, col].plot(time, data)
+            axes[row, col].set_title(title, fontsize=8)
+            axes[row, col].set_ylabel(ylabel, fontsize=8)
+            axes[row, col].set_xticklabels(time, rotation=45, ha='right')  # Rotate x-axis labels
 
         # Set x labels only for the bottom row
         axes[4, 0].set_xlabel('Time', fontsize=8)
         axes[4, 1].set_xlabel('Time', fontsize=8)
-
-        # Remove unused subplot
-        fig.delaxes(axes[5, 0])
-        fig.delaxes(axes[5, 1])
 
         # Show the plot
         plt.show()
