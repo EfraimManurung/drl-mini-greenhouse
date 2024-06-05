@@ -263,9 +263,34 @@ class MiniGreenhouse2(gym.Env):
     def define_spaces(self):
         '''
         Define the observation and action spaces.
+        
+        Based on the observation
+            - co2_in
+            - temp_in
+            - rh_in
+            - PAR_in
+            - fruit_leaf
+            - fruit_stem
+            - fruit_dw
+        
+        Lower bound and upper bound for the state x(t) variables
+        Temperature (°C) - Max: 24.53, Min: 22.25
+        Relative Humidity (%) - Max: 66.70, Min: 50.36
+        CO2 Concentration (ppm) - Max: 1933.33, Min: 400.00
+        PAR Inside (W/m^2) - Max: 5.85, Min: 0.00
+        
         '''
-        self.observation_space = Box(low=np.array([0, 0, 0, 0, 0]), high=np.array([np.inf, np.inf, np.inf, np.inf, np.inf]), dtype=np.float32)
-        self.action_space = Box(low=np.array([0, 0, 0]), high=np.array([1, 1, 1]), dtype=np.float32)
+        self.observation_space = Box(
+        low=np.array([400.00, 22.25, 50.36, 0.00, 0, 0, 0]), 
+        high=np.array([1933.33, 24.53, 66.70, 5.85, np.inf, np.inf, np.inf]), 
+        dtype=np.float32
+        )
+        
+        self.action_space = Box(
+            low=np.array([0, 0, 0]), 
+            high=np.array([1, 1, 1]), 
+            dtype=np.float32
+        )
 
     def reset(self, *, seed=None, options=None):
         '''
