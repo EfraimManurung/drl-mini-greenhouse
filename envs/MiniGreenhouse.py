@@ -110,7 +110,10 @@ class MiniGreenhouse(gym.Env):
             print(f"Running MATLAB script: {self.matlab_script_path}")
             
             # Define the season length parameter
-            self.season_length = 2 / 144  # 15 minutes
+            # 20 minutes
+            # But remember, the first 5 minutes is the initial values so
+            # only count for the 15 minutes
+            self.season_length = 1 / 72  
             self.first_day = _first_day
             
             # Initialize control variables to zero for 2 timesteps
@@ -435,8 +438,8 @@ class MiniGreenhouse(gym.Env):
         print("CURRENT STEPS: ", self.current_step)
 
         # Update the season_length and first_day
-        self.season_length = 2 / 144
-        self.first_day += 2 / 144
+        self.season_length = 1 / 72
+        self.first_day += 1 / 72
         
         # Convert co2_in ppm
         # co2ppm_to_dens Convert CO2 molar concetration [ppm] to density [kg m^{-3}]

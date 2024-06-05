@@ -17,7 +17,7 @@ config = (
         env_config={},
     )
     # Parallelize environment rollouts.
-    .env_runners(num_env_runners=1)
+    .env_runners(num_env_runners=2)
 )
 
 # Construct the PPO algorithm object from the config
