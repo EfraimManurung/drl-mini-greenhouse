@@ -118,7 +118,7 @@ class ServiceFunctions:
         return vaporPres
         
     
-    def plot_all_data(self, time, co2_in, temp_in, rh_in, par_in, fruit_leaf, fruit_stem, fruit_dw, ventilation, lamps, heater):
+    def plot_all_data(self, time, co2_in, temp_in, rh_in, PAR_in, fruit_leaf, fruit_stem, fruit_dw, ventilation, lamps, heater, rewards):
         '''
         Plot all the appended data.
         
@@ -136,55 +136,34 @@ class ServiceFunctions:
         - heater: List of heater control values
         '''
         
-        # Create a DataFrame from the data
-        data = {
-            'Time': time,
-            'CO2 In': co2_in,
-            'Temperature In': temp_in,
-            'RH In': rh_in,
-            'PAR In': par_in,
-            'Fruit leaf': fruit_leaf,
-            'Fruit stem': fruit_stem,
-            'Fruit Dry Weight': fruit_dw,
-            'Ventilation': ventilation,
-            'Lamps': lamps,
-            'Heater': heater
-        }
+        # Create subplots with 4 rows and 3 columns
+        fig, axes = plt.subplots(nrows=4, ncols=3, figsize=(15, 10))
         
-        df = pd.DataFrame(data)
-
-        # Create subplots
-        fig, axes = plt.subplots(nrows=5, ncols=2, figsize=(15, 25))
-        fig.tight_layout(pad=5.0)
-
-        # Adjust layout to create more space between plots
-        plt.subplots_adjust(hspace=0.5, wspace=0.3)
-
-        # Plot each variable
-        plot_order = [
-            ('CO2 In', 'CO2 [ppm]', co2_in),
-            ('RH In', 'Relative Humidity [%]', rh_in),
-            ('Temperature In', 'Temperature [°C]', temp_in),
-            ('PAR In', 'PAR [W/m²]', par_in),
-            ('Ventilation', 'Control Signal [-]', ventilation),
-            ('Lamps', 'Control Signal [-]', lamps),
-            ('Heater', 'Control Signal [-]', heater),
-            ('Fruit Leaf', r'Dry-weight [mg (CH$_2$O) m$^{-2}$]', fruit_leaf),
-            ('Fruit Stem', r'Dry-weight [mg (CH$_2$O) m$^{-2}$]', fruit_stem),
-            ('Fruit Dry Weight', r'Dry-weight [mg (CH$_2$O) m$^{-2}$]', fruit_dw)
+        # Data to be plotted along with their titles
+        data = [
+            (co2_in, 'CO2 In [ppm]'),
+            (temp_in, 'Temperature In [°C]'),
+            (rh_in, 'RH In [%]'),
+            (PAR_in, 'PAR In [W/m2]'),
+            (fruit_leaf, r'Fruit Leaf [mg (CH$_2$O) m$^{-2}$]'),
+            (fruit_stem, r'Fruit Stem [mg (CH$_2$O) m$^{-2}$]'),
+            (fruit_dw, r'Fruit Dry Weight [mg (CH$_2$O) m$^{-2}$]'),
+            (ventilation, 'Ventilation [-]'),
+            (lamps, 'Lamps [-]'),
+            (heater, 'Heater [-]'),
+            (rewards, 'Rewards [-]')
         ]
-
-        # Plot the data in the specified order
-        for i, (title, ylabel, data) in enumerate(plot_order):
-            row, col = divmod(i, 2)
-            axes[row, col].plot(time, data)
-            axes[row, col].set_title(title, fontsize=8)
-            axes[row, col].set_ylabel(ylabel, fontsize=8)
-            axes[row, col].set_xticklabels(time, rotation=45, ha='right')  # Rotate x-axis labels
-
-        # Set x labels only for the bottom row
-        axes[4, 0].set_xlabel('Time', fontsize=8)
-        axes[4, 1].set_xlabel('Time', fontsize=8)
-
-        # Show the plot
+        
+        # Plot each dataset in a subplot
+        for i, (ax, (y_data, title)) in enumerate(zip(axes.flatten(), data)):
+            ax.plot(time, y_data)  # Plot data
+            # ax.set_title(title)  # Set the title of the subplot
+            ax.set_xlabel('Time')  # Set the x-axis label
+            ax.set_ylabel(title)  # Set the y-axis label
+            ax.tick_params(axis='x', rotation=45)  # Rotate x-axis labels for readability
+            ax.set_xticks(range(len(time)))  # Set the positions of the ticks on the x-axis
+            ax.set_xticklabels(time, rotation=45, ha='right')  # Set the tick labels on the x-axis
+        
+        # Adjust the layout to prevent overlap
+        plt.tight_layout()
         plt.show()

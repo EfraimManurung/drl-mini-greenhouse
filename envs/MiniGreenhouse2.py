@@ -93,6 +93,15 @@ class MiniGreenhouse2(gym.Env):
         self.lamps_list = []
         self.heater_list = []
         
+        # Initialize a list to store rewards
+        self.rewards_list = []
+        
+        # Initialize reward
+        reward = 0
+        
+        # Record the reward for the first time
+        self.rewards_list.extend([reward] * 3)
+        
         # Initialize ServiceFunctions
         self.service_functions = ServiceFunctions()
         
@@ -231,6 +240,7 @@ class MiniGreenhouse2(gym.Env):
         print(f"Length of Ventilation: {len(self.ventilation_list)}")
         print(f"Length of Lamps: {len(self.lamps_list)}")
         print(f"Length of Heater: {len(self.heater_list)}")
+        print(f"Length of Rewards: {len(self.rewards_list)}")
         data = {
             'Time': self.time,
             'CO2 In': self.co2_in,
@@ -242,7 +252,8 @@ class MiniGreenhouse2(gym.Env):
             'Fruit Dry Weight': self.fruit_dw,
             'Ventilation': self.ventilation_list,
             'Lamps': self.lamps_list,
-            'Heater': self.heater_list
+            'Heater': self.heater_list,
+            'Rewards': self.rewards_list
         }
         
         df = pd.DataFrame(data)
@@ -258,7 +269,7 @@ class MiniGreenhouse2(gym.Env):
         self.service_functions.plot_all_data(time_steps_formatted, self.co2_in, self.temp_in, self.rh_in, \
                                             self.PAR_in, self.fruit_leaf, self.fruit_stem, \
                                             self.fruit_dw, self.ventilation_list, self.lamps_list, \
-                                            self.heater_list)
+                                            self.heater_list, self.rewards_list)
 
     def define_spaces(self):
         '''
@@ -325,11 +336,17 @@ class MiniGreenhouse2(gym.Env):
         Get the reward for the current state.
         
         Returns:
-        int: Reward, {some values} if the climate controls reaches
-        the setpoints, otherwise 0.
+        float: The reward based on the change in fruit dry weight.
         '''
-        # Define a reward based on the conditions you want to optimize
-        return 1.0  # Placeholder reward
+        
+        if self.current_step == 1:
+            return 0.0 # No reward for the initial state
+        
+        delta_fruit_dw = self.fruit_dw[self.current_step] - self.fruit_dw[self.current_step - 1]
+        if delta_fruit_dw > 0:
+            return delta_fruit_dw
+        else:
+            return 0.0
 
     def done(self):
         '''
@@ -454,6 +471,9 @@ class MiniGreenhouse2(gym.Env):
         
         # Calculate reward
         reward = self.reward()
+        
+        # Record the reward
+        self.rewards_list.extend([reward] * 3)
         
         # Check if done
         done = self.done()
