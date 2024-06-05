@@ -56,12 +56,21 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, indoorFile, frui
         % drl_indoor(:,4) = 1e6 * co2ppm2dens(drl_indoor(:,2), drl_indoor(:,4));
         
         % Print the converted RH 
-        disp('Converted RH concentration (Pa)');
-        disp(drl_indoor(:,3));
+        % disp('Converted RH concentration (Pa)');
+        % disp(drl_indoor(:,3));
+        % Print the converted RH 
+        disp('Converted RH concentration (Pa):');
+        for i = 1:length(drl_indoor(:,3))
+            fprintf('  %.2f\n', drl_indoor(i,3));
+        end
 
         % Print the converted CO2 concentration
+        % disp('Converted CO2 concentration (mg m^{-3}):');
+        % disp(drl_indoor(:,4));
         disp('Converted CO2 concentration (mg m^{-3}):');
-        disp(drl_indoor(:,4));
+        for i = 1:length(drl_indoor(:,4))
+            fprintf('  %.2f\n', drl_indoor(i,4));
+        end
 
     end
 
@@ -108,8 +117,14 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, indoorFile, frui
         % Display the fields in fruit_file to verify their names
         % disp('Fields in fruit_file:');
         % disp(fieldnames(fruit_file));
+        % disp('Fruit growth: ');
+        % disp(fruit_file);
+        % Print the fruit growth data
         disp('Fruit growth: ');
-        disp(fruit_file);
+        fprintf('          time: %.2f\n', fruit_file.time);
+        fprintf('    fruit_leaf: %.2f\n', fruit_file.fruit_leaf);
+        fprintf('    fruit_stem: %.2f\n', fruit_file.fruit_stem);
+        fprintf('      fruit_dw: %.2f\n', fruit_file.fruit_dw);
         
         % Ensure that the required fields exist in fruit_file
         required_fields = {'time', 'fruit_leaf', 'fruit_stem', 'fruit_dw'};
@@ -187,8 +202,8 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, indoorFile, frui
     %     fprintf('Multiplier Irradiance: %.2f\n', multiplier_irradiance);
     % end
     
-    fprintf('Season Length: %d day(s) \n', seasonLength);
-    fprintf('Season firstDay: %d day(s) \n', firstDay);
+    fprintf('Season Length: %.2f day(s) \n', seasonLength);
+    fprintf('Season firstDay: %.2f day(s) \n', firstDay);
     % fprintf('---------------------------------------------\n');
     % fprintf('| Metric          | Value       | Unit       \n');
     % fprintf('---------------------------------------------\n');
@@ -225,10 +240,15 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, indoorFile, frui
     save('drl-env.mat', 'time', 'temp_in', 'rh_in', 'co2_in', 'PAR_in', 'fruit_leaf', 'fruit_stem', 'fruit_dw');
 
     %% Print the values in tabular format
+    % fprintf('Time (s)\tIndoor Temp (°C)\tIndoor Humidity (%%)\tIndoor CO2 (ppm)\tPAR Inside (W/m²)\tFruit Dry Weight (g/m²)\n');
+    % for i = 1:length(time)
+    %     fprintf('%f\t%f\t%f\t%f\t%f\t%f\n', time(i), temp_in(i), rh_in(i), co2_in(i), PAR_in(i), fruit_dw(i));
+    % end
     fprintf('Time (s)\tIndoor Temp (°C)\tIndoor Humidity (%%)\tIndoor CO2 (ppm)\tPAR Inside (W/m²)\tFruit Dry Weight (g/m²)\n');
     for i = 1:length(time)
-        fprintf('%f\t%f\t%f\t%f\t%f\t%f\n', time(i), temp_in(i), rh_in(i), co2_in(i), PAR_in(i), fruit_dw(i));
+        fprintf('%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n', time(i), temp_in(i), rh_in(i), co2_in(i), PAR_in(i), fruit_dw(i));
     end
+
 
     %% Clear the workspace
     % clear;

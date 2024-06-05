@@ -66,6 +66,9 @@ from datetime import timedelta
 # Import service functions
 from utils.ServiceFunctions import ServiceFunctions
 
+# Set NumPy print options
+np.set_printoptions(precision=2, suppress=True)
+
 class MiniGreenhouse(gym.Env):
     '''
     MiniGreenhouse environment, a custom environment based on the GreenLight model
@@ -318,7 +321,7 @@ class MiniGreenhouse(gym.Env):
         self.current_step = 1  
         # self.load_mat_data()  # Ensure data is loaded at reset
         self.state = self.observation()
-        print(f"Environment reset. Initial state: {self.state}")
+        # print(f"Environment reset. Initial state: {self.state}")
         return self.state, {}
 
     def observation(self):
@@ -339,7 +342,7 @@ class MiniGreenhouse(gym.Env):
         ], dtype=np.float32)
         
         clipped_obs = np.clip(obs, self.observation_space.low, self.observation_space.high)
-        print(f"Observation at step {self.current_step}: {clipped_obs}")
+        #print(f"Observation at step {self.current_step}: {clipped_obs}")
         return clipped_obs
 
     def reward(self):
