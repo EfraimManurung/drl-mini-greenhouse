@@ -1,23 +1,18 @@
-# Import libraries
-import sys
-import os
-import time
-
 # Import libraries needed for PPO algorithm
 from ray.rllib.algorithms.ppo import PPOConfig
 
 # Import environment
-from envs.MiniGreenhouse import MiniGreenhouse
+from envs.MiniGreenhouse2 import MiniGreenhouse2
 
 # RL Configuration and Training
 config = (
     PPOConfig().environment(
-        env=MiniGreenhouse,
+        env=MiniGreenhouse2,
         # Config dict to be passed to our custom env's constructor.
         env_config={},
     )
     # Parallelize environment rollouts.
-    .env_runners(num_env_runners=2)
+    .env_runners(num_env_runners=1)
 )
 
 # Construct the PPO algorithm object from the config
@@ -29,7 +24,7 @@ for i in range(10):
     print(f"Iter: {i}; avg. rewards={results['env_runners']['episode_return_mean']}")
 
 # call `save()` to create a checkpoint.
-save_result = algo.save('model/drl-model-mini-greenhouse')
+save_result = algo.save('model/model-minigreenhouse')
 
 path_to_checkpoint = save_result.checkpoint.path
 print(

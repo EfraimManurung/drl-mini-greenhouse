@@ -36,7 +36,7 @@ class MiniGreenhouse2(gym.Env):
         
         # Check if the file exists
         if os.path.isfile(self.matlab_script_path):
-            print(f"Running MATLAB script: {self.matlab_script_path}")
+            # print(f"Running MATLAB script: {self.matlab_script_path}")
             
             # Define the season length parameter
             # 20 minutes
@@ -56,11 +56,17 @@ class MiniGreenhouse2(gym.Env):
         # Load the data from the .mat file
         self.load_mat_data()
     
-        # Define the observation and action spaces
-        self.define_spaces()
+        self.observation_space = Box(
+            low=np.array([393.72, 21.39, 50.36, 0.00, 0, 0, 0]), 
+            high=np.array([1933.33, 24.53, 90.00, 5.85, np.inf, np.inf, np.inf]), 
+            dtype=np.float32
+        )
         
-        # Initialize the state
-        self.reset()
+        self.action_space = Box(
+            low=np.array([0, 0, 0]), 
+            high=np.array([1, 1, 1]), 
+            dtype=np.float32
+        )
 
     def init_controls(self):
         '''
@@ -147,38 +153,6 @@ class MiniGreenhouse2(gym.Env):
             f"ventilation={len(self.ventilation_list)}, lamps={len(self.lamps_list)}, heater={len(self.heater_list)}"
         )
         
-    def define_spaces(self):
-        '''
-        Define the observation and action spaces.
-        
-        Based on the observation
-            - co2_in
-            - temp_in
-            - rh_in
-            - PAR_in
-            - fruit_leaf
-            - fruit_stem
-            - fruit_dw
-        
-        Lower bound and upper bound for the state x(t) variables
-        Temperature (°C) - Max: 24.53, Min: 22.25
-        Relative Humidity (%) - Max: 66.70, Min: 50.36
-        CO2 Concentration (ppm) - Max: 1933.33, Min: 400.00
-        PAR Inside (W/m^2) - Max: 5.85, Min: 0.00
-        
-        '''
-        self.observation_space = Box(
-            low=np.array([393.72, 21.39, 50.36, 0.00, 0, 0, 0]), 
-            high=np.array([1933.33, 24.53, 68.92, 5.85, np.inf, np.inf, np.inf]), 
-            dtype=np.float32
-        )
-        
-        self.action_space = Box(
-            low=np.array([0, 0, 0]), 
-            high=np.array([1, 1, 1]), 
-            dtype=np.float32
-        )
-    
     def reset(self, *, seed=None, options=None):
         '''
         Reset the environment to the initial state.
@@ -199,7 +173,7 @@ class MiniGreenhouse2(gym.Env):
         Returns:
         float: The index representing the states
         '''
-        return np.array([
+        obs = np.array([
             self.co2_in[-1],  # Latest value
             self.temp_in[-1],  # Latest value
             self.rh_in[-1],  # Latest value
@@ -208,6 +182,10 @@ class MiniGreenhouse2(gym.Env):
             self.fruit_stem[-1],  # Latest value
             self.fruit_dw[-1]  # Latest value
         ], dtype=np.float32)
+        
+        clipped_obs = np.clip(obs, self.observation_space.low, self.observation_space.high)
+        
+        return clipped_obs
         
     def reward(self):
         '''
