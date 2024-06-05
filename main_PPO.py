@@ -1,19 +1,33 @@
-from envs.MiniGreenhouse2 import MiniGreenhouse2
+# Import libraries
+import sys
+import os
+import time
 
-env_config = {}
+# Import libraries needed for PPO algorithm
+from ray.rllib.algorithms.ppo import PPOConfig
 
-# def __init__(self, env_config, time_multiplier):
-env = MiniGreenhouse2(env_config, 6.0, 4)
+# Import environment
+from envs.MiniGreenhouse import MiniGreenhouse2
 
-observation, _ = env.reset()
-done = False
+# RL Configuration and Training
+config = (
+    PPOConfig().environment(
+        env=MiniGreenhouse2,
+        # Config dict to be passed to our custom env's constructor.
+        env_config={},
+    )
+    # Parallelize environment rollouts.
+    .env_runners(num_env_runners=3)
+)
 
-# Manually set the action values
-# fixed_action = [0.0, 1.0, 1.0]  # Action values for fan, toplighting, and heating
+# Construct the PPO algorithm object from the config
+algo = config.build()
 
-#env.done(10)
+# call `save()` to create a checkpoint.
+save_result = algo.save('model/drl-model-mini-greenhouse')
 
-while not done:
-    action = env.action_space.sample()
-    observation, reward, done, truncated, info = env.step(action)
-    print(f"Observation: {observation}, Reward: {reward}, Done: {done}")
+path_to_checkpoint = save_result.checkpoint.path
+print(
+    "An Algorithm checkpoint has been created inside directory: "
+    f"'{path_to_checkpoint}'."
+)
