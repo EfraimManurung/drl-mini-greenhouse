@@ -72,15 +72,15 @@ class MiniGreenhouse(gym.Env):
     and real mini-greenhouse.
     '''
    
-    def __init__(self, env_config, _first_day = 6, _iteration2 = 6):
+    def __init__(self, env_config, _first_day = 6, max_steps = 100):
         '''
         Initialize the MiniGreenhouse environment.
         
         Parameters:
         env_config(dict): Configuration dictionary for the environment.
         '''  
-        # Initiate iteration
-        self._iteration = _iteration2
+        # Initiate and max steps
+        self.max_steps = max_steps
         
         # Start MATLAB engine
         self.eng = matlab.engine.start_matlab()
@@ -134,7 +134,7 @@ class MiniGreenhouse(gym.Env):
         '''
         Initialize control variables.
         '''
-        time_steps = np.linspace(300, 1200, 4)  # 20 minutes (1200 seconds)
+        time_steps = np.linspace(300, 1200, 4)  # 15 minutes (900 seconds)
         self.controls = {
             'time': time_steps.reshape(-1, 1),
             'ventilation': np.zeros(4).reshape(-1, 1),
@@ -259,8 +259,10 @@ class MiniGreenhouse(gym.Env):
         df = pd.DataFrame(data)
         print(df)
         
-        time_max = self._iteration * 900 # for e.g. 4 steps * 900 (15 minutes) = 60 minutes
-        time_steps_seconds = np.linspace(300, time_max, self._iteration * 3)  # Time steps in seconds
+        # time_max = (self.max_steps + 1) * 900 # for e.g. 4 steps * 900 (15 minutes) = 60 minutes
+        # time_steps_seconds = np.linspace(300, time_max, (self.max_steps + 1) * 3)  # Time steps in seconds
+        time_max = self.max_steps * 900 # for e.g. 4 steps * 900 (15 minutes) = 60 minutes
+        time_steps_seconds = np.linspace(300, time_max, self.max_steps  * 3)  # Time steps in seconds
         time_steps_hours = time_steps_seconds / 3600  # Convert seconds to hours
         time_steps_formatted = [str(timedelta(hours=h))[:-3] for h in time_steps_hours]  # Format to HH:MM
         print("time_steps_plot (in HH:MM format):", time_steps_formatted)
@@ -292,9 +294,9 @@ class MiniGreenhouse(gym.Env):
         
         '''
         self.observation_space = Box(
-        low=np.array([400.00, 22.25, 50.36, 0.00, 0, 0, 0]), 
-        high=np.array([1933.33, 24.53, 66.70, 5.85, np.inf, np.inf, np.inf]), 
-        dtype=np.float32
+            low=np.array([393.72, 21.39, 50.36, 0.00, 0, 0, 0]), 
+            high=np.array([1933.33, 24.53, 68.92, 5.85, np.inf, np.inf, np.inf]), 
+            dtype=np.float32
         )
         
         self.action_space = Box(
@@ -302,7 +304,7 @@ class MiniGreenhouse(gym.Env):
             high=np.array([1, 1, 1]), 
             dtype=np.float32
         )
-
+    
     def reset(self, *, seed=None, options=None):
         '''
         Reset the environment to the initial state.
@@ -310,8 +312,10 @@ class MiniGreenhouse(gym.Env):
         Returns:
         int: The initial observation of the environment.
         '''
-        self.current_step = 1 # Before is 0
+        self.current_step = 1  
+        # self.load_mat_data()  # Ensure data is loaded at reset
         self.state = self.observation()
+        print(f"Environment reset. Initial state: {self.state}")
         return self.state, {}
 
     def observation(self):
@@ -321,15 +325,19 @@ class MiniGreenhouse(gym.Env):
         Returns:
         float: The index representing the states
         '''
-        return np.array([
-            self.co2_in[self.current_step],
-            self.temp_in[self.current_step],
-            self.rh_in[self.current_step],
-            self.PAR_in[self.current_step],
-            self.fruit_leaf[self.current_step],
-            self.fruit_stem[self.current_step],
-            self.fruit_dw[self.current_step]
+        obs = np.array([
+            self.co2_in[-1],  # Latest value
+            self.temp_in[-1],  # Latest value
+            self.rh_in[-1],  # Latest value
+            self.PAR_in[-1],  # Latest value
+            self.fruit_leaf[-1],  # Latest value
+            self.fruit_stem[-1],  # Latest value
+            self.fruit_dw[-1]  # Latest value
         ], dtype=np.float32)
+        
+        clipped_obs = np.clip(obs, self.observation_space.low, self.observation_space.high)
+        print(f"Observation at step {self.current_step}: {clipped_obs}")
+        return clipped_obs
 
     def reward(self):
         '''
@@ -339,7 +347,7 @@ class MiniGreenhouse(gym.Env):
         float: The reward based on the change in fruit dry weight.
         '''
         
-        if self.current_step == 1:
+        if self.current_step == 0:
             return 0.0 # No reward for the initial state
         
         delta_fruit_dw = self.fruit_dw[self.current_step] - self.fruit_dw[self.current_step - 1]
@@ -355,8 +363,9 @@ class MiniGreenhouse(gym.Env):
         Returns:
         bool: True if the episode is done, otherwise False.
         '''
-        # Episode is done if we have reached the end of the data
-        if self.current_step >= self._iteration:
+        
+        # Episode is done if we have reached the maximum number of steps
+        if self.current_step >= self.max_steps:
             self.print_all_data()
             return True
         return False
@@ -480,7 +489,7 @@ class MiniGreenhouse(gym.Env):
         
         truncated = False
         
-        return self.observation(), reward, done, truncated, {}
+        return self.state, reward, done, truncated, {}
 
     # Ensure to properly close the MATLAB engine when the environment is no longer used
     def __del__(self):
