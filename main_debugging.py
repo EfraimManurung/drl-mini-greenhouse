@@ -9,8 +9,8 @@ from envs.MiniGreenhouse2 import MiniGreenhouse2
 config = (
     PPOConfig()
     .environment(env=MiniGreenhouse2)
-    .rollouts(num_envs_per_worker=2)
-    .training(train_batch_size=4, sgd_minibatch_size=1)
+    #.env_runners(num_envs_per_env_runner=2)
+    .training(train_batch_size=2, sgd_minibatch_size=1)
 )
 
 # Build.
@@ -19,7 +19,7 @@ algo = config.build()
 # Train.
 # print(algo.train())
 # Train the model for a number of iterations
-for i in range(2):
+for i in range(10):
     results = algo.train()
     # print(f"Iter: {i}; avg. rewards={results['episode_reward_mean']}")
     # print(f"Iter: {i}; results={results}")

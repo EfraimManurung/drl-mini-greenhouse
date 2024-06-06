@@ -202,8 +202,8 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, indoorFile, frui
     %     fprintf('Multiplier Irradiance: %.2f\n', multiplier_irradiance);
     % end
     
-    fprintf('Season Length: %.2f day(s) \n', seasonLength);
-    fprintf('Season firstDay: %.2f day(s) \n', firstDay);
+    fprintf('Season Length: %.4f day(s) \n', seasonLength);
+    fprintf('Season firstDay: %.4f day(s) \n', firstDay);
     % fprintf('---------------------------------------------\n');
     % fprintf('| Metric          | Value       | Unit       \n');
     % fprintf('---------------------------------------------\n');

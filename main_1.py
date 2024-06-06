@@ -2,7 +2,7 @@ from envs.MiniGreenhouse import MiniGreenhouse
 
 env_config = {}
 #env = MiniGreenhouse(env_config)
-env = MiniGreenhouse(env_config, 6.0, 4)
+env = MiniGreenhouse(env_config, 6.0, 6)
 
 # Test the environment
 observation, _ = env.reset()
