@@ -60,6 +60,7 @@ import numpy as np
 import scipy.io as sio
 import matlab.engine
 import os
+from datetime import timedelta
 
 # Import service functions
 from utils.ServiceFunctions import ServiceFunctions
@@ -88,6 +89,15 @@ class MiniGreenhouse2(gym.Env):
         self.ventilation_list = []
         self.lamps_list = []
         self.heater_list = []
+        
+        # Initialize a list to store rewards
+        self.rewards_list = []
+        
+        # Initialize reward
+        reward = 0
+        
+        # Record the reward for the first time
+        self.rewards_list.extend([reward] * 3)
 
         # Initialize ServiceFunctions
         self.service_functions = ServiceFunctions()
@@ -153,6 +163,59 @@ class MiniGreenhouse2(gym.Env):
             dtype=np.float32
         )
 
+    def print_all_data(self):
+        '''
+        Print all the appended data.
+        '''
+        print("")
+        print("")
+        print("-------------------------------------------------------------------------------------")
+        print("Print all the appended data.")
+        # Print lengths of each list to identify discrepancies
+        print(f"Length of Time: {len(self.time)}")
+        print(f"Length of CO2 In: {len(self.co2_in)}")
+        print(f"Length of Temperature In: {len(self.temp_in)}")
+        print(f"Length of RH In: {len(self.rh_in)}")
+        print(f"Length of PAR In: {len(self.PAR_in)}")
+        print(f"Length of Fruit leaf: {len(self.fruit_leaf)}")
+        print(f"Length of Fruit stem: {len(self.fruit_stem)}")
+        print(f"Length of Fruit Dry Weight: {len(self.fruit_dw)}")
+        print(f"Length of Ventilation: {len(self.ventilation_list)}")
+        print(f"Length of Lamps: {len(self.lamps_list)}")
+        print(f"Length of Heater: {len(self.heater_list)}")
+        print(f"Length of Rewards: {len(self.rewards_list)}")
+        data = {
+            'Time': self.time,
+            'CO2 In': self.co2_in,
+            'Temperature In': self.temp_in,
+            'RH In': self.rh_in,
+            'PAR In': self.PAR_in,
+            'Fruit leaf': self.fruit_leaf,
+            'Fruit stem': self.fruit_stem,
+            'Fruit Dry Weight': self.fruit_dw,
+            'Ventilation': self.ventilation_list,
+            'Lamps': self.lamps_list,
+            'Heater': self.heater_list,
+            'Rewards': self.rewards_list
+        }
+        
+        df = pd.DataFrame(data)
+        print(df)
+        
+        # time_max = (self.max_steps + 1) * 900 # for e.g. 4 steps * 900 (15 minutes) = 60 minutes
+        # time_steps_seconds = np.linspace(300, time_max, (self.max_steps + 1) * 3)  # Time steps in seconds
+        time_max = self.max_steps * 900 # for e.g. 4 steps * 900 (15 minutes) = 60 minutes
+        time_steps_seconds = np.linspace(300, time_max, self.max_steps  * 3)  # Time steps in seconds
+        time_steps_hours = time_steps_seconds / 3600  # Convert seconds to hours
+        time_steps_formatted = [str(timedelta(hours=h))[:-3] for h in time_steps_hours]  # Format to HH:MM
+        print("time_steps_plot (in HH:MM format):", time_steps_formatted)
+        
+        # Show all the data in figures
+        self.service_functions.plot_all_data(time_steps_formatted, self.co2_in, self.temp_in, self.rh_in, \
+                                            self.PAR_in, self.fruit_leaf, self.fruit_stem, \
+                                            self.fruit_dw, self.ventilation_list, self.lamps_list, \
+                                            self.heater_list, self.rewards_list)
+    
     def init_controls(self):
         '''
         Initialize control variables.
@@ -257,7 +320,7 @@ class MiniGreenhouse2(gym.Env):
         int: Reward, 1 if the fruit dry weight increased, otherwise 0.
         '''
         
-        return 1.0 if self.fruit_dw[-1] > 312.0 else -0.1
+        return 1.0 if self.fruit_dw[-1] > 311.3 else -0.1
 
     def done(self):
         '''
@@ -357,9 +420,15 @@ class MiniGreenhouse2(gym.Env):
         
         # Load the updated data from the .mat file
         self.load_mat_data()
+        
+        # Calculate reward
+        reward = self.reward()
+        
+        # Record the reward
+        self.rewards_list.extend([reward] * 3)
 
         truncated = False
-        return self.observation(), self.reward(), self.done(), truncated, {}
+        return self.observation(), reward, self.done(), truncated, {}
 
     # Ensure to properly close the MATLAB engine when the environment is no longer used
     def __del__(self):

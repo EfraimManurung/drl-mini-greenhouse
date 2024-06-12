@@ -8,28 +8,21 @@ from envs.MiniGreenhouse2 import MiniGreenhouse2
 # Use PPOConfig to configure and build the PPO algorithm
 config = (
     PPOConfig()
-    .environment(env=MiniGreenhouse2)
-    #.env_runners(num_envs_per_env_runner=2)
+    .environment(env=MiniGreenhouse2,)
+    # .env_runners(num_envs_per_env_runner=2)
     .training(train_batch_size=2, sgd_minibatch_size=1)
 )
 
 # Build.
 algo = config.build()
 
-# Train.
-# print(algo.train())
 # Train the model for a number of iterations
 for i in range(10):
     results = algo.train()
-    # print(f"Iter: {i}; avg. rewards={results['episode_reward_mean']}")
-    # print(f"Iter: {i}; results={results}")
     
-    # Access 'episode_reward_mean' in 'env_runners'
-    if 'env_runners' in results and 'episode_reward_mean' in results['env_runners']:
-        print(f"Iter: {i}; avg. rewards={results['env_runners']['episode_reward_mean']}")
-    else:
-        print(f"Iter: {i}; 'episode_reward_mean' not found in results")
-
+    # Print the rewards
+    print(f"Iter: {i}; avg. rewards={results['env_runners']['episode_return_mean']}")
+    
 # Save the model checkpoint
 save_result = algo.save('model/model-minigreenhouse')
 
