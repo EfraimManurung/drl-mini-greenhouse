@@ -61,6 +61,7 @@ import scipy.io as sio
 import matlab.engine
 import os
 from datetime import timedelta
+import pandas as pd
 
 # Import service functions
 from utils.ServiceFunctions import ServiceFunctions
@@ -320,7 +321,10 @@ class MiniGreenhouse2(gym.Env):
         int: Reward, 1 if the fruit dry weight increased, otherwise 0.
         '''
         
-        return 1.0 if self.fruit_dw[-1] > 311.3 else -0.1
+        # Target dry weight as the goal
+        target_dw = 311.3
+        
+        return 1.0 if self.fruit_dw[-1] > target_dw else -0.1
 
     def done(self):
         '''
@@ -329,6 +333,10 @@ class MiniGreenhouse2(gym.Env):
         Returns:
         bool: True if the episode is done, otherwise False.
         '''
+        
+        # Episode is done if we have reached the target
+        # We print all the physical parameters and controls
+        # self.print_all_data()
         
         return self.reward() == 1.0
 
