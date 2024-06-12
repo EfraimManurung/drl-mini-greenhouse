@@ -142,14 +142,14 @@ class MiniGreenhouse2(gym.Env):
         
         # Define observation and action spaces
         self.observation_space = Box(
-            low=np.array([393.72, 21.39, 50.36, 0.00, 0, 0, 0]), 
-            high=np.array([1933.33, 24.53, 90.00, 5.85, np.inf, np.inf, np.inf]), 
+            low=np.array([393.72, 21.39, 50.36, 0.00, 0, 0, 0], dtype=np.float32), 
+            high=np.array([1933.33, 24.53, 90.00, 5.85, np.inf, np.inf, np.inf], dtype=np.float32), 
             dtype=np.float32
         )
         
         self.action_space = Box(
-            low=np.array([0, 0, 0]), 
-            high=np.array([1, 1, 1]), 
+            low=np.array([0, 0, 0], dtype=np.float32), 
+            high=np.array([1, 1, 1], dtype=np.float32), 
             dtype=np.float32
         )
 
@@ -254,10 +254,10 @@ class MiniGreenhouse2(gym.Env):
         Get the reward for the current state.
         
         Returns:
-        float: The reward based on the change in fruit dry weight.
+        int: Reward, 1 if the fruit dry weight increased, otherwise 0.
         '''
         
-        return 1.0 if self.fruit_dw[-1] > 310.0 else -1.0
+        return 1.0 if self.fruit_dw[-1] > 312.0 else -0.1
 
     def done(self):
         '''
@@ -285,11 +285,17 @@ class MiniGreenhouse2(gym.Env):
         Returns: 
         tuple: A tuple containing the new observation, reward, done flag, and additional info.
         '''
+        print("ACTION: ", action)
         
         # Convert actions to discrete values
         fan = 1 if action[0] >= 0.5 else 0
         toplighting = 1 if action[1] >= 0.5 else 0
         heating = 1 if action[2] >= 0.5 else 0
+        
+        print("CONVERTED ACTION")
+        print("fan: ", fan)
+        print("toplighting: ", toplighting)
+        print("heating: ", heating)
 
         time_steps = np.linspace(300, 1200, 4)
         ventilation = np.full(4, fan)
