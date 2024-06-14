@@ -218,10 +218,9 @@ class MiniGreenhouse2(gym.Env):
         print("time_steps_plot (in HH:MM format):", time_steps_formatted)
         
         # Format data in JSON
-        json_data = self.service_functions.format_data_in_JSON(time_steps_formatted, self.co2_in, self.temp_in, self.rh_in, \
-                                            self.PAR_in, self.fruit_leaf, self.fruit_stem, \
-                                            self.fruit_dw, self.ventilation_list, self.lamps_list, \
-                                            self.heater_list, self.rewards_list)
+        json_data = self.service_functions.format_data_in_JSON(time_steps_formatted, \
+                                            self.ventilation_list, self.lamps_list, \
+                                            self.heater_list)
         
         # Publish data
         self.service_functions.publish_mqtt_data(json_data)
