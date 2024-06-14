@@ -15,7 +15,7 @@ from envs.MiniGreenhouse2 import MiniGreenhouse2
 
 my_new_ppo = Algorithm.from_checkpoint('model/model-minigreenhouse')
 
-env = MiniGreenhouse2({}, 6, True, 2)
+env = MiniGreenhouse2({}, 6, True, 4)
 
 # Get the initial observation (should be: [0.0] for the starting position).
 obs, info = env.reset()
