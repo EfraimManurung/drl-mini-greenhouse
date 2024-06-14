@@ -2,9 +2,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
+import json
+import paho.mqtt.client as mqtt
+
 class ServiceFunctions:
     def __init__(self):
         print("Service Functions initiated!")
+        
+        # Initiate the MQTT client
+        self.client = mqtt.Client()
         
     def co2ppm_to_dens(self, _temp, _ppm):
         '''
@@ -167,3 +173,69 @@ class ServiceFunctions:
         # Adjust the layout to prevent overlap
         plt.tight_layout()
         plt.show()
+        
+    def format_data_in_JSON(self, time, co2_in, temp_in, rh_in, PAR_in, fruit_leaf, fruit_stem, fruit_dw, ventilation, lamps, heater, rewards):
+        '''
+        Convert data to JSON format and print it.
+        
+        Parameters:
+        - time: List of time values
+        - co2_in: List of CO2 values
+        - temp_in: List of temperature values
+        - rh_in: List of relative humidity values
+        - par_in: List of PAR values
+        - fruit_leaf: List of fruit leaf values
+        - fruit_stem: List of fruit stem values
+        - fruit_dw: List of fruit dry weight values
+        - ventilation: List of ventilation control values
+        - lamps: List of lamps control values
+        - heater: List of heater control values
+        - rewards: List of rewards values
+        '''
+        
+        def convert_to_native(value):
+            if isinstance(value, np.ndarray):
+                return value.tolist()
+            elif isinstance(value, (np.int32, np.int64, np.float32, np.float64)):
+                return value.item()
+            else:
+                return value
+
+        data = {
+            "time": [convert_to_native(v) for v in time],
+            "co2_in": [convert_to_native(v) for v in co2_in],
+            "temp_in": [convert_to_native(v) for v in temp_in],
+            "rh_in": [convert_to_native(v) for v in rh_in],
+            "PAR_in": [convert_to_native(v) for v in PAR_in],
+            "fruit_leaf": [convert_to_native(v) for v in fruit_leaf],
+            "fruit_stem": [convert_to_native(v) for v in fruit_stem],
+            "fruit_dw": [convert_to_native(v) for v in fruit_dw],
+            "ventilation": [convert_to_native(v) for v in ventilation],
+            "lamps": [convert_to_native(v) for v in lamps],
+            "heater": [convert_to_native(v) for v in heater],
+            "rewards": [convert_to_native(v) for v in rewards]
+        }
+
+        json_data = json.dumps(data, indent=4)
+        print(json_data)
+        return json_data
+    
+    def publish_mqtt_data(self, json_data, broker="test.mosquitto.org", port=1883, topic="test/topic"):
+        '''
+        Publish JSON data to an MQTT broker.
+        
+        Parameters:
+        - json_data: JSON formatted data to publish
+        - broker: MQTT broker address
+        - port: MQTT broker port
+        - topic: MQTT topic to publish data to
+        '''
+        
+        def on_connect(client, userdata, flags, rc):
+            print("Connected with result code " + str(rc))
+            client.publish(topic, str(json_data))
+        
+        self.client.on_connect = on_connect
+        
+        self.client.connect(broker, port, 60)
+        self.client.loop_start()

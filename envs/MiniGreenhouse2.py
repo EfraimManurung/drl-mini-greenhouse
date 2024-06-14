@@ -170,7 +170,7 @@ class MiniGreenhouse2(gym.Env):
             dtype=np.float32
         )
 
-    def print_all_data(self):
+    def print_and_send_all_data(self):
         '''
         Print all the appended data.
         '''
@@ -216,6 +216,15 @@ class MiniGreenhouse2(gym.Env):
         time_steps_hours = time_steps_seconds / 3600  # Convert seconds to hours
         time_steps_formatted = [str(timedelta(hours=h))[:-3] for h in time_steps_hours]  # Format to HH:MM
         print("time_steps_plot (in HH:MM format):", time_steps_formatted)
+        
+        # Format data in JSON
+        json_data = self.service_functions.format_data_in_JSON(time_steps_formatted, self.co2_in, self.temp_in, self.rh_in, \
+                                            self.PAR_in, self.fruit_leaf, self.fruit_stem, \
+                                            self.fruit_dw, self.ventilation_list, self.lamps_list, \
+                                            self.heater_list, self.rewards_list)
+        
+        # Publish data
+        self.service_functions.publish_mqtt_data(json_data)
         
         # Show all the data in figures
         self.service_functions.plot_all_data(time_steps_formatted, self.co2_in, self.temp_in, self.rh_in, \
@@ -334,8 +343,14 @@ class MiniGreenhouse2(gym.Env):
         # Target dry weight as the goal
         target_dw = 312.0
         
-        return 1.0 if self.fruit_dw[-1] > target_dw else -0.1
-
+        # return 1.0 if self.fruit_dw[-1] > target_dw else -0.1
+        delta_fruit_dw = (self.fruit_dw[-2] - self.fruit_dw[-1])
+        print("delta_fruit_dw: ", delta_fruit_dw)
+        if delta_fruit_dw > 0:
+            return delta_fruit_dw
+        else:
+            return 0.0
+        
     def done(self):
         '''
         Check if the episode is done.
@@ -346,12 +361,12 @@ class MiniGreenhouse2(gym.Env):
         
         # Episode is done if we have reached the target
         # We print all the physical parameters and controls
-        # self.print_all_data()
+        # self.print_and_send_all_data()
         
         #return self.reward() == 1.0
         if self.flag_run == True:
             if self.current_step >= self.max_steps:
-                self.print_all_data()
+                self.print_and_send_all_data()
                 return True
         return False
 

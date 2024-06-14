@@ -357,6 +357,7 @@ class MiniGreenhouse(gym.Env):
             return 0.0 # No reward for the initial state
         
         delta_fruit_dw = self.fruit_dw[self.current_step] - self.fruit_dw[self.current_step - 1]
+        print("delta_fruit_dw: ", delta_fruit_dw)
         if delta_fruit_dw > 0:
             return delta_fruit_dw
         else:
