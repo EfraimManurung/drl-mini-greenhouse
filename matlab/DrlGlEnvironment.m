@@ -59,10 +59,10 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
     % outdoor_iot(:,2) = outdoor_iot(:,2);
     outdoor_iot(:,2) = outdoor_drl(:,2) * 0.0079;   % radiation     [W m^{-2}]  outdoor global irradiation source: https://www.researchgate.net/post/Howto_convert_solar_intensity_in_LUX_to_watt_per_meter_square_for_sunlight#:~:text=The%20LUX%20meter%20is%20used,of%20the%20incident%20solar%20radiation.&text=multiply%20lux%20to%200.0079%20which%20give%20you%20value%20of%20w%2Fm2.
     outdoor_iot(:,3) = outdoor_drl(:,3);            % temperature   [°C]        outdoor air temperature
-    outdoor_iot(:,4) = outdoor_drl(:,4);            % humidity [kg m^{-3}] outdoor vapor concentration
+    outdoor_iot(:,4) = rh2vaporDens(double(outdoor_iot(:,3)), double(outdoor_drl(:,4)));  % Convert relative humidity [%] to vapor density [kg{H2O} m^{-3}]
     % outdoor(:,5) = co2ppm2dens(outdoor(:,3), CO2_PPM);  % Using constant CO2_PPM for the outdoor
-    % outdoor_iot(:,5) = co2ppm2dens(outdoor_iot(:,3), outdoor_drl(:,5)); %co2 [kg{CO2} m^{-3}{air}] outdoor CO2 concentration
-    outdoor_iot(:,5) = co2ppm2dens(outdoor_iot(:,3), CO2_PPM);
+    outdoor_iot(:,5) = co2ppm2dens(double(outdoor_iot(:,3)), double(outdoor_drl(:,5))); %co2 [kg{CO2} m^{-3}{air}] outdoor CO2 concentration
+    % outdoor_iot(:,5) = co2ppm2dens(outdoor_iot(:,3), CO2_PPM);
 
     % Print the variables
     disp("OUTDOOR MEASUREMENTS FROM RASPBERRY PI (IOT SYSTEM)")
@@ -85,7 +85,6 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
     outdoor_iot(:,7) = outdoor_iot(:,3) - 10;
     outdoor_iot(:,8) = soilTempNl(secsInYear+outdoor_iot(:,1)); % add soil temperature
 
-   
     if isempty(indoorFile)
         drl_indoor = [];
     else

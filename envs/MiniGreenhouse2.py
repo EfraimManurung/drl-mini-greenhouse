@@ -534,8 +534,8 @@ class MiniGreenhouse2(gym.Env):
         print("CURRENT STEPS: ", self.current_step)
 
         # Update the season_length and first_day
-        self.season_length += 1 / 72 #* 3 / 4
-        self.first_day = 1 / 72 #* 3 / 4
+        self.season_length = 1 / 72 #* 3 / 4
+        self.first_day += 1 / 72 #* 3 / 4
 
         # Convert co2_in ppm
         co2_density = self.service_functions.co2ppm_to_dens(self.temp_in[-3:], self.co2_in[-3:])
