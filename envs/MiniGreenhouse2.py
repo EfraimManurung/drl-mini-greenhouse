@@ -300,7 +300,8 @@ class MiniGreenhouse2(gym.Env):
             # Set the flag to indicate a message was received
             self.message_received = True
             self.client.loop_stop()  # Stop the loop
-            
+        
+        self.message_received = False # Reset message_received flag
         self.client.on_connect = on_connect
         self.client.on_message = on_message
 
@@ -534,6 +535,9 @@ class MiniGreenhouse2(gym.Env):
         
         # Save the fruit growth to .mat file
         sio.savemat('fruit.mat', fruit_growth)
+        
+        # Get the outdoor measurements
+        self.get_outdoor_measurements()
 
         # Run the scrip with the updated state variables
         self.run_matlab_script('indoor.mat', 'fruit.mat')
