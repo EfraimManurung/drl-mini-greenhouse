@@ -204,7 +204,7 @@ class ServiceFunctions:
         print("JSON DATA: ", json_data)
         return json_data
     
-    def publish_mqtt_data(self, json_data, broker="localhost", port=1883, topic="greenhouse/drl-controls"):
+    def publish_mqtt_data(self, json_data, broker="192.168.1.131", port=1883, topic="greenhouse/drl-controls"):
         '''
         Publish JSON data to an MQTT broker.
         

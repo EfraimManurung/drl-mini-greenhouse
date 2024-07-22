@@ -62,6 +62,10 @@ import matlab.engine
 import os
 from datetime import timedelta
 import pandas as pd
+import json
+
+# Import MQTT Library
+import paho.mqtt.client as mqtt
 
 # Import service functions
 from utils.ServiceFunctions import ServiceFunctions
@@ -79,6 +83,10 @@ class MiniGreenhouse2(gym.Env):
         Parameters:
         env_config(dict): Configuration dictionary for the environment.
         '''  
+        
+        # Initialize the MQTT client
+        self.client = mqtt.Client(client_id="", protocol=mqtt.MQTTv5)
+        self.message_received = False  # Initialize message_received flag
         
         self.flag_run = _flag_run
         
@@ -116,8 +124,13 @@ class MiniGreenhouse2(gym.Env):
             # 20 minutes
             # But remember, the first 5 minutes is the initial values so
             # only count for the 15 minutes
-            self.season_length = 1 / 72
+            # The calculation look like this:
+            # 1 / 72 * 24 [hours] * 60 [minutes / hours] = 20 minutes  
+            self.season_length = 1 / 72 #* 3/4
             self.first_day = _first_day
+            
+            # Initialize outdoor measurements 
+            self.get_outdoor_measurements()
             
             # Initialize control variables to zero 
             self.init_controls()
@@ -218,12 +231,12 @@ class MiniGreenhouse2(gym.Env):
         print("time_steps_plot (in HH:MM format):", time_steps_formatted)
         
         # Format data in JSON
-        json_data = self.service_functions.format_data_in_JSON(time_steps_formatted, \
-                                            self.ventilation_list, self.lamps_list, \
-                                            self.heater_list)
+        # json_data = self.service_functions.format_data_in_JSON(time_steps_seconds, \
+        #                                     self.ventilation_list, self.lamps_list, \
+        #                                     self.heater_list)
         
-        # Publish data
-        self.service_functions.publish_mqtt_data(json_data)
+        # # Publish data
+        # self.service_functions.publish_mqtt_data(json_data)
         
         # Show all the data in figures
         self.service_functions.plot_all_data(time_steps_formatted, self.co2_in, self.temp_in, self.rh_in, \
@@ -249,6 +262,59 @@ class MiniGreenhouse2(gym.Env):
         self.lamps_list.extend(self.controls['lamps'].flatten()[-3:])
         self.heater_list.extend(self.controls['heater'].flatten()[-3:])
         sio.savemat('controls.mat', self.controls)
+        
+    def get_outdoor_measurements(self, broker="192.168.1.131", port=1883, topic="greenhouse/outdoor-measurements"):
+        '''
+        Initialize outdoor measurements.
+        
+        Subscribe JSON data from a MQTT broker.
+        
+        Outdoor measurements:
+        - time: from main loop iteration in 1 s
+        - lux: Need to be converted to W / m^2
+        - temperature
+        - humidity
+        - co2
+        
+        Parameters:
+        - json_data: JSON formatted data to publish
+        - broker: MQTT broker address
+        - port: MQTT broker port
+        - topic: MQTT topic to publish data to
+        
+        '''
+
+        def on_connect(client, userdata, flags, reason_code, properties):
+            print("Connected with result code " + str(reason_code))
+            client.subscribe(topic)
+            
+        def on_message(client, userdata, msg):
+            print(msg.topic + " " + str(msg.payload.decode()))
+            # Parse the JSON data
+            data = json.loads(msg.payload.decode())
+            
+            # Process the received data
+            # Change the matlab file in here
+            # self.process_received_data(data) 
+        
+            # Set the flag to indicate a message was received
+            self.message_received = True
+            self.client.loop_stop()  # Stop the loop
+            
+        self.client.on_connect = on_connect
+        self.client.on_message = on_message
+
+        self.client.connect(broker, port, 60)
+        self.client.loop_start()  # Start the loop in a separate thread
+    
+        # Wait for a message to be received
+        while not self.message_received:
+            continue
+        
+        self.client.loop_stop()  # Ensure the loop is stopped
+        self.client.disconnect()  # Disconnect the client
+        return True
+
 
     def run_matlab_script(self, indoor_file=None, fruit_file=None):
         '''
@@ -407,6 +473,16 @@ class MiniGreenhouse2(gym.Env):
         self.ventilation_list.extend(ventilation[-3:])
         self.lamps_list.extend(lamps[-3:])
         self.heater_list.extend(heater[-3:])
+        
+        # time_steps_seconds = np.linspace(300, 1200, 3)  # Time steps in seconds
+        
+        # Format data in JSON
+        json_data = self.service_functions.format_data_in_JSON(time_steps, \
+                                            ventilation, lamps, \
+                                            heater)
+        
+        # Publish data
+        self.service_functions.publish_mqtt_data(json_data)
 
         # Create control dictionary
         controls = {
@@ -427,8 +503,8 @@ class MiniGreenhouse2(gym.Env):
         print("CURRENT STEPS: ", self.current_step)
 
         # Update the season_length and first_day
-        self.season_length = 1 / 72
-        self.first_day += 1 / 72
+        self.season_length = 1 / 72 #* 3 / 4
+        self.first_day += 1 / 72 #* 3 / 4
 
         # Convert co2_in ppm
         co2_density = self.service_functions.co2ppm_to_dens(self.temp_in[-3:], self.co2_in[-3:])
