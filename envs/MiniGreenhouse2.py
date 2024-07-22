@@ -269,13 +269,6 @@ class MiniGreenhouse2(gym.Env):
         
         Subscribe JSON data from a MQTT broker.
         
-        Outdoor measurements:
-        - time: from main loop iteration in 1 s
-        - lux: Need to be converted to W / m^2
-        - temperature
-        - humidity
-        - co2
-        
         Parameters:
         - json_data: JSON formatted data to publish
         - broker: MQTT broker address
@@ -295,7 +288,7 @@ class MiniGreenhouse2(gym.Env):
             
             # Process the received data
             # Change the matlab file in here
-            # self.process_received_data(data) 
+            self.process_received_data(data) 
         
             # Set the flag to indicate a message was received
             self.message_received = True
@@ -316,7 +309,32 @@ class MiniGreenhouse2(gym.Env):
         self.client.disconnect()  # Disconnect the client
         return True
 
-
+    def process_received_data(self, data):
+        '''
+        Process the outdoor measurements.
+        
+        Outdoor measurements:
+        - time: from main loop iteration in 1 s
+        - lux: Need to be converted to W / m^2
+        - temperature
+        - humidity
+        - co2
+        '''
+        
+        # Extract variables
+        time = data.get("time", [])
+        lux = data.get("lux", [])
+        temp = data.get("temperature", [])
+        hum = data.get("humidity", [])
+        co2 = data.get("co2", [])
+        
+        # Print the extracted variables
+        print("Time:", time)
+        print("Lux:", lux)
+        print("Temperature:", temp)
+        print("Humidity:", hum)
+        print("CO2:", co2)
+        
     def run_matlab_script(self, indoor_file=None, fruit_file=None):
         '''
         Run the MATLAB script.
@@ -407,7 +425,7 @@ class MiniGreenhouse2(gym.Env):
             return 0.0 # No reward for the initial state 
         
         # Target dry weight as the goal
-        target_dw = 312.0
+        # target_dw = 312.0
         
         # return 1.0 if self.fruit_dw[-1] > target_dw else -0.1
         delta_fruit_dw = (self.fruit_dw[-2] - self.fruit_dw[-1])
