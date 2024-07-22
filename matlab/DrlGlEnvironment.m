@@ -1,4 +1,4 @@
-function DrlGlEnvironment(seasonLength, firstDay, controlsFile, indoorFile, fruitFile)    
+function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, indoorFile, fruitFile)    
     % Use for the environment in the DRL environment
     % Using createGreenLightModel
     %
@@ -35,10 +35,61 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, indoorFile, frui
     controls_iot(:,7) = controls_drl(:,3);  % Toplights on/off
     controls_iot(:,10) = controls_drl(:,4); % Boiler value
 
+    % Load outdoor measurements from the .mat file
+    outdoor_file = load(outdoorFile);
+    outdoor_drl = [outdoor_file.time, outdoor_file.lux, outdoor_file.temperature, outdoor_file.humidity, outdoor_file.co2];
+
+     % Function inputs:
+    %   lampType        Type of lamps in the greenhouse. Choose between 
+    %                   'hps', 'led', or 'none' (default is none)
+    %   weather         A matrix with 8 columns, in the following format:
+    %       weather(:,1)    timestamps of the input [s] in regular intervals
+    %       weather(:,2)    radiation     [W m^{-2}]  outdoor global irradiation 
+    %       weather(:,3)    temperature   [°C]        outdoor air temperature
+    %       weather(:,4)    humidity      [kg m^{-3}] outdoor vapor concentration
+    %       weather(:,5)    co2 [kg{CO2} m^{-3}{air}] outdoor CO2 concentration
+    %       weather(:,6)    wind        [m s^{-1}] outdoor wind speed
+    %       weather(:,7)    sky temperature [°C]
+    %       weather(:,8)    temperature of external soil layer [°C]
+    %       weather(:,9)    daily radiation sum [MJ m^{-2} day^{-1}]
+
+    CO2_PPM = 400; % assumed constant value of CO2 ppm
+
+    % Change for outdoor measurements
+    % outdoor_iot(:,2) = outdoor_iot(:,2);
+    outdoor_iot(:,2) = outdoor_drl(:,2) * 0.0079;   % radiation     [W m^{-2}]  outdoor global irradiation source: https://www.researchgate.net/post/Howto_convert_solar_intensity_in_LUX_to_watt_per_meter_square_for_sunlight#:~:text=The%20LUX%20meter%20is%20used,of%20the%20incident%20solar%20radiation.&text=multiply%20lux%20to%200.0079%20which%20give%20you%20value%20of%20w%2Fm2.
+    outdoor_iot(:,3) = outdoor_drl(:,3);            % temperature   [°C]        outdoor air temperature
+    outdoor_iot(:,4) = outdoor_drl(:,4);            % humidity [kg m^{-3}] outdoor vapor concentration
+    % outdoor(:,5) = co2ppm2dens(outdoor(:,3), CO2_PPM);  % Using constant CO2_PPM for the outdoor
+    % outdoor_iot(:,5) = co2ppm2dens(outdoor_iot(:,3), outdoor_drl(:,5)); %co2 [kg{CO2} m^{-3}{air}] outdoor CO2 concentration
+    outdoor_iot(:,5) = co2ppm2dens(outdoor_iot(:,3), CO2_PPM);
+
+    % Print the variables
+    disp("OUTDOOR MEASUREMENTS FROM RASPBERRY PI (IOT SYSTEM)")
+    disp('Radiation [W m^{-2}]:');
+    disp(outdoor_iot(:,2));
+    
+    disp('Temperature [°C]:');
+    disp(outdoor_iot(:,3));
+    
+    disp('Humidity [kg m^{-3}]:');
+    disp(outdoor_iot(:,4));
+    
+    disp('CO2 [kg{CO2} m^{-3}{air}]:');
+    %disp(outdoor_iot(:,5));
+    
+    % number of seconds since beginning of year to startTime
+    secsInYear = seconds(startTime-datetime(year(startTime),1,1,0,0,0));
+
+    %indoor_iot(:,7) = skyTempRdam(indoor_iot(:,3), datenum(startTime)+indoor_iot(:,1)/86400); % add sky temperature
+    outdoor_iot(:,7) = outdoor_iot(:,3) - 10;
+    outdoor_iot(:,8) = soilTempNl(secsInYear+outdoor_iot(:,1)); % add soil temperature
+
+   
     if isempty(indoorFile)
         drl_indoor = [];
     else
-        % Load DRL controls from the .mat file
+        % Load indoor measurements from the .mat file
         indoor_file = load(indoorFile);
         drl_indoor = [indoor_file.time, indoor_file.temp_in, indoor_file.rh_in, indoor_file.co2_in];
         
@@ -79,16 +130,7 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, indoorFile, frui
     v.rhAir = DynamicElement('v.rhAir', [floor(indoor_iot(:,1)) indoor_iot(:,3)]);
     v.co2Air = DynamicElement('v.co2Air', [floor(indoor_iot(:,1)) indoor_iot(:,4)]);
     v.iInside = DynamicElement('v.iInside', [floor(indoor_iot(:,1)) indoor_iot(:,5)]);
-    
-    % number of seconds since beginning of year to startTime
-    secsInYear = seconds(startTime-datetime(year(startTime),1,1,0,0,0));
-    
-    % Change for outdoor measurements
-    % outdoor_iot(:,2) = outdoor_iot(:,2);
-
-    %indoor_iot(:,7) = skyTempRdam(indoor_iot(:,3), datenum(startTime)+indoor_iot(:,1)/86400); % add sky temperature
-    outdoor_iot(:,7) = outdoor_iot(:,3) - 10;
-    outdoor_iot(:,8) = soilTempNl(secsInYear+outdoor_iot(:,1)); % add soil temperature
+   
     
     %% Create an instance of createGreenLight with the default Vanthoor parameters
     

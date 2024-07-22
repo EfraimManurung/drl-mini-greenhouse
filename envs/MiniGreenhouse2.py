@@ -335,6 +335,18 @@ class MiniGreenhouse2(gym.Env):
         print("Humidity:", hum)
         print("CO2:", co2)
         
+        # Create outdoor measurements dictionary
+        outdoor_measurements = {
+            'time': np.array(time).reshape(-1, 1),
+            'lux': np.array(lux).reshape(-1, 1),
+            'temperature': np.array(temp).reshape(-1, 1),
+            'humidity': np.array(hum).reshape(-1, 1),
+            'co2': np.array(co2).reshape(-1, 1)
+        }
+        
+        # Save outdoor measurements to .mat file
+        sio.savemat('outdoor.mat', outdoor_measurements)
+        
     def run_matlab_script(self, indoor_file=None, fruit_file=None):
         '''
         Run the MATLAB script.
@@ -346,7 +358,7 @@ class MiniGreenhouse2(gym.Env):
         if fruit_file is None:
             fruit_file = []
 
-        self.eng.DrlGlEnvironment(self.season_length, self.first_day, 'controls.mat', indoor_file, fruit_file, nargout=0)
+        self.eng.DrlGlEnvironment(self.season_length, self.first_day, 'controls.mat', 'outdoor.mat', indoor_file, fruit_file, nargout=0)
 
     def load_mat_data(self):
         '''
@@ -522,8 +534,8 @@ class MiniGreenhouse2(gym.Env):
         print("CURRENT STEPS: ", self.current_step)
 
         # Update the season_length and first_day
-        self.season_length = 1 / 72 #* 3 / 4
-        self.first_day += 1 / 72 #* 3 / 4
+        self.season_length += 1 / 72 #* 3 / 4
+        self.first_day = 1 / 72 #* 3 / 4
 
         # Convert co2_in ppm
         co2_density = self.service_functions.co2ppm_to_dens(self.temp_in[-3:], self.co2_in[-3:])
