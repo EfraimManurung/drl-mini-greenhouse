@@ -21,10 +21,12 @@ class ServiceFunctions:
     def __init__(self):
         print("Service Functions initiated!")
         
-        # Initiate the MQTT client
+        # Initiate the MQTT client for publishing data
         self.client_pub = mqtt.Client()
-        # Initialize the MQTT client
+        
+        # Initialize the MQTT client for subscribing data
         self.client_sub = mqtt.Client(client_id="", protocol=mqtt.MQTTv5)
+        
         self.message_received = False  # Initialize message_received flag
         
     def co2ppm_to_dens(self, _temp, _ppm):
@@ -219,7 +221,7 @@ class ServiceFunctions:
         print("JSON DATA: ", json_data)
         return json_data
     
-    def publish_mqtt_data(self, json_data, broker="192.168.1.131", port=1883, topic="greenhouse/drl-controls"):
+    def publish_mqtt_data(self, json_data, broker="192.168.1.131", port=1883, topic="greenhouse-iot-system/drl-controls"):
         '''
         Publish JSON data to an MQTT broker.
         
@@ -231,7 +233,7 @@ class ServiceFunctions:
         '''
         
         def on_connect(client, userdata, flags, rc):
-            print("Connected with result code MQTT " + str(rc))
+            print("Connected with result code PUBLISH MQTT " + str(rc))
             client.publish(topic, str(json_data))
         
         self.client_pub.on_connect = on_connect
@@ -239,7 +241,7 @@ class ServiceFunctions:
         self.client_pub.connect(broker, port, 60)
         self.client_pub.loop_start()
 
-    def get_outdoor_measurements(self, broker="192.168.1.131", port=1883, topic="greenhouse/outdoor-measurements"):
+    def get_outdoor_measurements(self, broker="192.168.1.131", port=1883, topic="greenhouse-iot-system/outdoor-measurements"):
         '''
         Initialize outdoor measurements.
         
@@ -254,7 +256,7 @@ class ServiceFunctions:
         '''
 
         def on_connect(client, userdata, flags, reason_code, properties):
-            print("Connected with result code MQTT " + str(reason_code))
+            print("Connected with result code SUBSCRIBE MQTT " + str(reason_code))
             client.subscribe(topic)
             
         def on_message(client, userdata, msg):
