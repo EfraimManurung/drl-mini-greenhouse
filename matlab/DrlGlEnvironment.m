@@ -53,7 +53,7 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
     %       weather(:,8)    temperature of external soil layer [°C]
     %       weather(:,9)    daily radiation sum [MJ m^{-2} day^{-1}]
 
-    CO2_PPM = 400; % assumed constant value of CO2 ppm
+    % CO2_PPM = 400; % assumed constant value of CO2 ppm
 
     % Change for outdoor measurements
     % outdoor_iot(:,2) = outdoor_iot(:,2);
@@ -76,7 +76,7 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
     disp(outdoor_iot(:,4));
     
     disp('CO2 [kg{CO2} m^{-3}{air}]:');
-    %disp(outdoor_iot(:,5));
+    disp(outdoor_iot(:,5));
     
     % number of seconds since beginning of year to startTime
     secsInYear = seconds(startTime-datetime(year(startTime),1,1,0,0,0));
@@ -232,6 +232,7 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
     
     % Save the output 
     % save exampleMiniGreenhouse
+    save DrlGlEnvironment
     
     % Display the multiplier values
     % fprintf('\n');

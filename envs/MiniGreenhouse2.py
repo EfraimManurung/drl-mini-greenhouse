@@ -74,6 +74,8 @@ class MiniGreenhouse2(gym.Env):
     '''
     MiniGreenhouse environment, a custom environment based on the GreenLight model
     and real mini-greenhouse.
+    
+    Link the Python code to matlab program with related methods.
     '''
     
     def __init__(self, env_config, _first_day=6, _flag_run = False, _max_steps = 4):
@@ -88,6 +90,7 @@ class MiniGreenhouse2(gym.Env):
         self.client = mqtt.Client(client_id="", protocol=mqtt.MQTTv5)
         self.message_received = False  # Initialize message_received flag
         
+        # Initialize if the main program for training or running
         self.flag_run = _flag_run
         
         # Initiate and max steps
@@ -127,9 +130,11 @@ class MiniGreenhouse2(gym.Env):
             # The calculation look like this:
             # 1 / 72 * 24 [hours] * 60 [minutes / hours] = 20 minutes  
             self.season_length = 1 / 72 #* 3/4
+            
+            # Days since beginning of data
             self.first_day = _first_day
             
-            # Initialize outdoor measurements 
+            # Initialize outdoor measurements, to get the outdoor measurements
             self.get_outdoor_measurements()
             
             # Initialize control variables to zero 
@@ -183,7 +188,7 @@ class MiniGreenhouse2(gym.Env):
             dtype=np.float32
         )
 
-    def print_and_send_all_data(self):
+    def print_all_data(self):
         '''
         Print all the appended data.
         '''
@@ -229,14 +234,6 @@ class MiniGreenhouse2(gym.Env):
         time_steps_hours = time_steps_seconds / 3600  # Convert seconds to hours
         time_steps_formatted = [str(timedelta(hours=h))[:-3] for h in time_steps_hours]  # Format to HH:MM
         print("time_steps_plot (in HH:MM format):", time_steps_formatted)
-        
-        # Format data in JSON
-        # json_data = self.service_functions.format_data_in_JSON(time_steps_seconds, \
-        #                                     self.ventilation_list, self.lamps_list, \
-        #                                     self.heater_list)
-        
-        # # Publish data
-        # self.service_functions.publish_mqtt_data(json_data)
         
         # Show all the data in figures
         self.service_functions.plot_all_data(time_steps_formatted, self.co2_in, self.temp_in, self.rh_in, \
@@ -457,12 +454,10 @@ class MiniGreenhouse2(gym.Env):
         
         # Episode is done if we have reached the target
         # We print all the physical parameters and controls
-        # self.print_and_send_all_data()
-        
-        #return self.reward() == 1.0
+
         if self.flag_run == True:
             if self.current_step >= self.max_steps:
-                self.print_and_send_all_data()
+                self.print_all_data()
                 return True
         return False
 

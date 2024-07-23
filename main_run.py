@@ -1,3 +1,14 @@
+'''
+Deep Reinforcement Learning for mini-greenhouse 
+
+Author: Efraim Manurung
+MSc Thesis in Information Technology Group, Wageningen University
+
+efraim.efraimpartoginahotasi@wur.nl
+efraim.manurung@gmail.com
+'''
+
+# Import Ray Reinforcement Learning Library
 from ray.rllib.algorithms.algorithm import Algorithm
 
 # Import supporting libraries
@@ -15,7 +26,8 @@ from envs.MiniGreenhouse2 import MiniGreenhouse2
 
 my_new_ppo = Algorithm.from_checkpoint('model/model-minigreenhouse')
 
-env = MiniGreenhouse2({}, 6, True, 4)
+# Call the MiniGreenhouse instance
+env = MiniGreenhouse2({}, 1, True, 4)
 
 # Get the initial observation (should be: [0.0] for the starting position).
 obs, info = env.reset()
