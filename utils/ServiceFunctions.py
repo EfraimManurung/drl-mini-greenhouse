@@ -1,6 +1,18 @@
+'''
+Service Functions for Deep Reinforcement Learning mini-greenhouse 
+
+Author: Efraim Manurung
+MSc Thesis in Information Technology Group, Wageningen University
+
+efraim.efraimpartoginahotasi@wur.nl
+efraim.manurung@gmail.com
+
+'''
+
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import scipy.io as sio
 
 import json
 import paho.mqtt.client as mqtt
@@ -10,7 +22,10 @@ class ServiceFunctions:
         print("Service Functions initiated!")
         
         # Initiate the MQTT client
-        self.client = mqtt.Client()
+        self.client_pub = mqtt.Client()
+        # Initialize the MQTT client
+        self.client_sub = mqtt.Client(client_id="", protocol=mqtt.MQTTv5)
+        self.message_received = False  # Initialize message_received flag
         
     def co2ppm_to_dens(self, _temp, _ppm):
         '''
@@ -216,10 +231,94 @@ class ServiceFunctions:
         '''
         
         def on_connect(client, userdata, flags, rc):
-            print("Connected with result code " + str(rc))
+            print("Connected with result code MQTT " + str(rc))
             client.publish(topic, str(json_data))
         
-        self.client.on_connect = on_connect
+        self.client_pub.on_connect = on_connect
         
-        self.client.connect(broker, port, 60)
-        self.client.loop_start()
+        self.client_pub.connect(broker, port, 60)
+        self.client_pub.loop_start()
+
+    def get_outdoor_measurements(self, broker="192.168.1.131", port=1883, topic="greenhouse/outdoor-measurements"):
+        '''
+        Initialize outdoor measurements.
+        
+        Subscribe JSON data from a MQTT broker.
+        
+        Parameters:
+        - json_data: JSON formatted data to publish
+        - broker: MQTT broker address
+        - port: MQTT broker port
+        - topic: MQTT topic to publish data to
+        
+        '''
+
+        def on_connect(client, userdata, flags, reason_code, properties):
+            print("Connected with result code MQTT " + str(reason_code))
+            client.subscribe(topic)
+            
+        def on_message(client, userdata, msg):
+            print(msg.topic + " " + str(msg.payload.decode()))
+            # Parse the JSON data
+            data = json.loads(msg.payload.decode())
+            
+            # Process the received data
+            # Change the matlab file in here
+            self.process_received_data(data) 
+        
+            # Set the flag to indicate a message was received
+            self.message_received = True
+            self.client_sub.loop_stop()  # Stop the loop
+        
+        self.message_received = False # Reset message_received flag
+        self.client_sub.on_connect = on_connect
+        self.client_sub.on_message = on_message
+
+        self.client_sub.connect(broker, port, 60)
+        self.client_sub.loop_start()  # Start the loop in a separate thread
+    
+        # Wait for a message to be received
+        while not self.message_received:
+            continue
+        
+        self.client_sub.loop_stop()  # Ensure the loop is stopped
+        self.client_sub.disconnect()  # Disconnect the client
+        return True
+
+    def process_received_data(self, data):
+        '''
+        Process the outdoor measurements.
+        
+        Outdoor measurements:
+        - time: from main loop iteration in 1 s
+        - lux: Need to be converted to W / m^2
+        - temperature
+        - humidity
+        - co2
+        '''
+        
+        # Extract variables
+        time = data.get("time", [])
+        lux = data.get("lux", [])
+        temp = data.get("temperature", [])
+        hum = data.get("humidity", [])
+        co2 = data.get("co2", [])
+        
+        # Print the extracted variables
+        print("Time:", time)
+        print("Lux:", lux)
+        print("Temperature:", temp)
+        print("Humidity:", hum)
+        print("CO2:", co2)
+        
+        # Create outdoor measurements dictionary
+        outdoor_measurements = {
+            'time': np.array(time).reshape(-1, 1),
+            'lux': np.array(lux).reshape(-1, 1),
+            'temperature': np.array(temp).reshape(-1, 1),
+            'humidity': np.array(hum).reshape(-1, 1),
+            'co2': np.array(co2).reshape(-1, 1)
+        }
+        
+        # Save outdoor measurements to .mat file
+        sio.savemat('outdoor.mat', outdoor_measurements)
