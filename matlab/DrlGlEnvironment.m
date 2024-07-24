@@ -35,10 +35,12 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
     controls_iot(:,7) = controls_drl(:,3);  % Toplights on/off
     controls_iot(:,10) = controls_drl(:,4); % Boiler value
     
-    if ~isempty(indoorFile)
-        % Try to load outdoor measurements from the .mat file
-        try 
-            % Load outdoor measurements from the .mat file
+    % Check if the outdoofile empty or not
+    if isempty(outdoorFile)
+        disp('Warning: Unable to load outdoor measurements file. Using default or empty values.');
+    % Try to load outdoor measurements from the .mat file
+    else
+            %Load outdoor measurements from the .mat file
             outdoor_file = load(outdoorFile);
             outdoor_drl = [outdoor_file.time, outdoor_file.lux, outdoor_file.temperature, outdoor_file.humidity, outdoor_file.co2];
         
@@ -80,9 +82,6 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
             
             disp('CO2 [kg{CO2} m^{-3}{air}]:');
             disp(outdoor_iot(:,5));
-        catch
-            disp('Warning: Unable to load outdoor measurements file. Using default or empty values.');
-        end
     end
 
     % number of seconds since beginning of year to startTime
@@ -239,7 +238,7 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
     
     % Save the output 
     % save exampleMiniGreenhouse
-    save DrlGlEnvironment
+    % save DrlGlEnvironment
     
     % Display the multiplier values
     % fprintf('\n');

@@ -222,14 +222,14 @@ class MiniGreenhouse2(gym.Env):
         
         # time_max = (self.max_steps + 1) * 900 # for e.g. 4 steps * 900 (15 minutes) = 60 minutes
         # time_steps_seconds = np.linspace(300, time_max, (self.max_steps + 1) * 3)  # Time steps in seconds
-        time_max = self.max_steps * 900 # for e.g. 4 steps * 900 (15 minutes) = 60 minutes
-        time_steps_seconds = np.linspace(300, time_max, self.max_steps  * 3)  # Time steps in seconds
+        time_max = (self.max_steps + 1) * 900 # for e.g. 4 steps * 900 (15 minutes) = 60 minutes
+        time_steps_seconds = np.linspace(300, time_max, (self.max_steps + 1)  * 3)  # Time steps in seconds
         time_steps_hours = time_steps_seconds / 3600  # Convert seconds to hours
         time_steps_formatted = [str(timedelta(hours=h))[:-3] for h in time_steps_hours]  # Format to HH:MM
         print("time_steps_plot (in HH:MM format):", time_steps_formatted)
         
         # Save all the data in an excel file
-        self.service_functions.export_to_excel('output/output_simulated_data.xlsx', time_steps_formatted, self.co2_in, self.temp_in, self.rh_in, \
+        self.service_functions.export_to_excel('output/output_simulated_data-2.xlsx', time_steps_formatted, self.co2_in, self.temp_in, self.rh_in, \
                                             self.PAR_in, self.fruit_leaf, self.fruit_stem, \
                                             self.fruit_dw, self.ventilation_list, self.lamps_list, \
                                             self.heater_list, self.rewards_list)
@@ -259,18 +259,21 @@ class MiniGreenhouse2(gym.Env):
         self.heater_list.extend(self.controls['heater'].flatten()[-3:])
         sio.savemat('controls.mat', self.controls)
         
-    def run_matlab_script(self, indoor_file=None, fruit_file=None):
+    def run_matlab_script(self, outdoor_file = None, indoor_file=None, fruit_file=None):
         '''
         Run the MATLAB script.
         '''
-        # Check if the indoor_file or fruit_file is None
+        # Check if the outdoor_file or indoor_file or fruit_file is None
         if indoor_file is None:
             indoor_file = []
         
         if fruit_file is None:
             fruit_file = []
+        
+        if outdoor_file is None:
+            outdoor_file = []
 
-        self.eng.DrlGlEnvironment(self.season_length, self.first_day, 'controls.mat', 'outdoor.mat', indoor_file, fruit_file, nargout=0)
+        self.eng.DrlGlEnvironment(self.season_length, self.first_day, 'controls.mat', outdoor_file, indoor_file, fruit_file, nargout=0)
 
     def load_mat_data(self):
         '''
@@ -320,7 +323,7 @@ class MiniGreenhouse2(gym.Env):
         Returns:
         int: The initial observation of the environment.
         '''
-        self.current_step = 1
+        self.current_step = 0
         
         #self.load_mat_data()
         return self.observation(), {}
@@ -359,6 +362,20 @@ class MiniGreenhouse2(gym.Env):
         else:
             return 0.0
         
+    def delete_files(self):
+        '''
+        delete file after simulation.
+        
+        Returns:
+        
+        '''
+        os.remove('controls.mat') # controls file
+        os.remove('drl-env.mat')  # simulation file
+        os.remove('indoor.mat')   # indoor measurements
+        os.remove('fruit.mat')    # fruit growth
+        os.remove('outdoor.mat')  # outdoor measurements
+        
+        
     def done(self):
         '''
         Check if the episode is done.
@@ -372,7 +389,12 @@ class MiniGreenhouse2(gym.Env):
 
         if self.flag_run == True:
             if self.current_step >= self.max_steps:
+                
+                # Print and save all data
                 self.print_and_save_all_data()
+                
+                # Delete all files
+                self.delete_files()
                 return True
         return False
 
@@ -481,7 +503,7 @@ class MiniGreenhouse2(gym.Env):
             self.service_functions.get_outdoor_measurements()
 
         # Run the scrip with the updated state variables
-        self.run_matlab_script('indoor.mat', 'fruit.mat')
+        self.run_matlab_script('outdoor.mat', 'indoor.mat', 'fruit.mat')
         
         # Load the updated data from the .mat file
         self.load_mat_data()
