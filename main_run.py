@@ -24,10 +24,14 @@ from envs.MiniGreenhouse2 import MiniGreenhouse2
 # that has the exact same state as the old one, from which the checkpoint was
 # created in the first place:
 
-my_new_ppo = Algorithm.from_checkpoint('model/model-minigreenhouse')
+my_new_ppo = Algorithm.from_checkpoint('model/model-minigreenhouse-2')
 
 # Call the MiniGreenhouse instance
-env = MiniGreenhouse2({}, 1, True, 4)
+env = MiniGreenhouse2({"flag_run": True,
+                        "first_day": 1,
+                        "season_length": 1/72,
+                        "max_steps": 4
+                        })
 
 # Get the initial observation (should be: [0.0] for the starting position).
 obs, info = env.reset()

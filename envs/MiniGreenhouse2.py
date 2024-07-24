@@ -74,7 +74,7 @@ class MiniGreenhouse2(gym.Env):
     Link the Python code to matlab program with related methods.
     '''
     
-    def __init__(self, env_config, _first_day=6, _flag_run = False, _max_steps = 4):
+    def __init__(self, env_config):
         '''
         Initialize the MiniGreenhouse environment.
         
@@ -83,11 +83,20 @@ class MiniGreenhouse2(gym.Env):
         '''  
         
         # Initialize if the main program for training or running
-        self.flag_run = _flag_run
+        self.flag_run  = env_config.get("flag_run", True) # The simulation is for running (other option is False for training)
+        self.first_day = env_config.get("first_day", 6) # The first day of the simulation
+        
+        # Define the season length parameter
+        # 20 minutes
+        # But remember, the first 5 minutes is the initial values so
+        # only count for the 15 minutes
+        # The calculation look like this:
+        # 1 / 72 * 24 [hours] * 60 [minutes / hours] = 20 minutes  
+        self.season_length = env_config.get("seasong_length", 1 / 72) #* 3/4
         
         # Initiate and max steps
         if self.flag_run == True:
-            self.max_steps = _max_steps
+            self.max_steps = env_config.get("max_steps", 4) # How many iteration the program run
         
         # Start MATLAB engine
         self.eng = matlab.engine.start_matlab()
@@ -114,17 +123,6 @@ class MiniGreenhouse2(gym.Env):
 
         # Check if MATLAB script exists
         if os.path.isfile(self.matlab_script_path):
-            
-            # Define the season length parameter
-            # 20 minutes
-            # But remember, the first 5 minutes is the initial values so
-            # only count for the 15 minutes
-            # The calculation look like this:
-            # 1 / 72 * 24 [hours] * 60 [minutes / hours] = 20 minutes  
-            self.season_length = 1 / 72 #* 3/4
-            
-            # Days since beginning of data
-            self.first_day = _first_day
             
             if self.flag_run == True:
                 # Initialize outdoor measurements, to get the outdoor measurements
@@ -181,7 +179,7 @@ class MiniGreenhouse2(gym.Env):
             dtype=np.float32
         )
 
-    def print_all_data(self):
+    def print_and_save_all_data(self):
         '''
         Print all the appended data.
         '''
@@ -227,6 +225,12 @@ class MiniGreenhouse2(gym.Env):
         time_steps_hours = time_steps_seconds / 3600  # Convert seconds to hours
         time_steps_formatted = [str(timedelta(hours=h))[:-3] for h in time_steps_hours]  # Format to HH:MM
         print("time_steps_plot (in HH:MM format):", time_steps_formatted)
+        
+        # Save all the data in an excel file
+        self.service_functions.export_to_excel('output_simulated_data.xlsx', time_steps_formatted, self.co2_in, self.temp_in, self.rh_in, \
+                                            self.PAR_in, self.fruit_leaf, self.fruit_stem, \
+                                            self.fruit_dw, self.ventilation_list, self.lamps_list, \
+                                            self.heater_list, self.rewards_list)
         
         # Show all the data in figures
         self.service_functions.plot_all_data(time_steps_formatted, self.co2_in, self.temp_in, self.rh_in, \
@@ -366,7 +370,7 @@ class MiniGreenhouse2(gym.Env):
 
         if self.flag_run == True:
             if self.current_step >= self.max_steps:
-                self.print_all_data()
+                self.print_and_save_all_data()
                 return True
         return False
 

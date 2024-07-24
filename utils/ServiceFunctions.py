@@ -191,6 +191,44 @@ class ServiceFunctions:
         plt.tight_layout()
         plt.show()
         
+    def export_to_excel(self, filename, time, co2_in, temp_in, rh_in, PAR_in, fruit_leaf, fruit_stem, fruit_dw, ventilation, lamps, heater, rewards):
+        '''
+        Export all the appended data to an Excel file.
+        
+        Parameters:
+        - filename: Name of the output Excel file
+        - time: List of time values
+        - co2_in: List of CO2 values
+        - temp_in: List of temperature values
+        - rh_in: List of relative humidity values
+        - par_in: List of PAR values
+        - fruit_leaf: List of fruit leaf values
+        - fruit_stem: List of fruit stem values
+        - fruit_dw: List of fruit dry weight values
+        - ventilation: List of ventilation control values
+        - lamps: List of lamps control values
+        - heater: List of heater control values
+        - rewards: List of rewards values
+        '''
+        data = {
+            'Time': time,
+            'CO2 In': co2_in,
+            'Temperature In': temp_in,
+            'RH In': rh_in,
+            'PAR In': PAR_in,
+            'Fruit leaf': fruit_leaf,
+            'Fruit stem': fruit_stem,
+            'Fruit Dry Weight': fruit_dw,
+            'Ventilation': ventilation,
+            'Lamps': lamps,
+            'Heater': heater,
+            'Rewards': rewards
+        }
+        
+        df = pd.DataFrame(data)
+        df.to_excel(filename, index=False)
+        print(f"Data successfully exported to {filename}")
+        
     def format_data_in_JSON(self, time, ventilation, lamps, heater):
         '''
         Convert data to JSON format and print it.
