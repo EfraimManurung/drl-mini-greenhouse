@@ -82,6 +82,8 @@ class MiniGreenhouse2(gym.Env):
         env_config(dict): Configuration dictionary for the environment.
         '''  
         
+        print("MiniGreenhouse2 Environment Start!!")
+        
         # Initialize if the main program for training or running
         self.flag_run  = env_config.get("flag_run", True) # The simulation is for running (other option is False for training)
         self.first_day = env_config.get("first_day", 6) # The first day of the simulation
@@ -227,7 +229,7 @@ class MiniGreenhouse2(gym.Env):
         print("time_steps_plot (in HH:MM format):", time_steps_formatted)
         
         # Save all the data in an excel file
-        self.service_functions.export_to_excel('output_simulated_data.xlsx', time_steps_formatted, self.co2_in, self.temp_in, self.rh_in, \
+        self.service_functions.export_to_excel('output/output_simulated_data.xlsx', time_steps_formatted, self.co2_in, self.temp_in, self.rh_in, \
                                             self.PAR_in, self.fruit_leaf, self.fruit_stem, \
                                             self.fruit_dw, self.ventilation_list, self.lamps_list, \
                                             self.heater_list, self.rewards_list)
