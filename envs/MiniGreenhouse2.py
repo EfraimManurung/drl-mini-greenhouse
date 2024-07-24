@@ -86,7 +86,7 @@ class MiniGreenhouse2(gym.Env):
         self.flag_run = _flag_run
         
         # Initiate and max steps
-        if _flag_run == True:
+        if self.flag_run == True:
             self.max_steps = _max_steps
         
         # Start MATLAB engine
@@ -126,8 +126,9 @@ class MiniGreenhouse2(gym.Env):
             # Days since beginning of data
             self.first_day = _first_day
             
-            # Initialize outdoor measurements, to get the outdoor measurements
-            self.service_functions.get_outdoor_measurements()
+            if self.flag_run == True:
+                # Initialize outdoor measurements, to get the outdoor measurements
+                self.service_functions.get_outdoor_measurements()
             
             # Initialize control variables to zero 
             self.init_controls()
@@ -469,8 +470,9 @@ class MiniGreenhouse2(gym.Env):
         # Save the fruit growth to .mat file
         sio.savemat('fruit.mat', fruit_growth)
         
-        # Get the outdoor measurements
-        self.service_functions.get_outdoor_measurements()
+        if self.flag_run == True:
+            # Get the outdoor measurements
+            self.service_functions.get_outdoor_measurements()
 
         # Run the scrip with the updated state variables
         self.run_matlab_script('indoor.mat', 'fruit.mat')
