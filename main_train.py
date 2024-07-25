@@ -30,7 +30,7 @@ for i in range(10):
     print(f"Iter: {i}; avg. rewards={results['env_runners']['episode_return_mean']}")
     
 # Save the model checkpoint
-save_result = algo.save('model/model-minigreenhouse-2')
+save_result = algo.save('model/model-minigreenhouse-3')
 
 path_to_checkpoint = save_result
 print(

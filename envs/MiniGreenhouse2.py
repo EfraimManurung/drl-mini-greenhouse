@@ -97,7 +97,7 @@ class MiniGreenhouse2(gym.Env):
         self.season_length = env_config.get("seasong_length", 1 / 72) #* 3/4
         
         # Initiate and max steps
-        if self.flag_run == True:
+        if self.flag_run == True or self.flag_run == False:
             self.max_steps = env_config.get("max_steps", 4) # How many iteration the program run
         
         # Start MATLAB engine
@@ -386,7 +386,7 @@ class MiniGreenhouse2(gym.Env):
         
         # Episode is done if we have reached the target
         # We print all the physical parameters and controls
-
+    
         if self.flag_run == True:
             if self.current_step >= self.max_steps:
                 
@@ -396,6 +396,10 @@ class MiniGreenhouse2(gym.Env):
                 # Delete all files
                 self.delete_files()
                 return True
+        else:
+            if self.current_step >= self.max_steps:
+                return True
+            
         return False
 
     def step(self, action):
@@ -439,13 +443,15 @@ class MiniGreenhouse2(gym.Env):
         
         # time_steps_seconds = np.linspace(300, 1200, 3)  # Time steps in seconds
         
-        # Format data controls in JSON format
-        json_data = self.service_functions.format_data_in_JSON(time_steps, \
-                                            ventilation, lamps, \
-                                            heater)
-        
-        # Publish controls to the raspberry pi (IoT system client)
-        self.service_functions.publish_mqtt_data(json_data)
+        # Only publish MQTT data for the Raspberry Pi when running not training
+        if self.flag_run == True:
+            # Format data controls in JSON format
+            json_data = self.service_functions.format_data_in_JSON(time_steps, \
+                                                ventilation, lamps, \
+                                                heater)
+            
+            # Publish controls to the raspberry pi (IoT system client)
+            self.service_functions.publish_mqtt_data(json_data)
 
         # Create control dictionary
         controls = {
@@ -503,7 +509,10 @@ class MiniGreenhouse2(gym.Env):
             self.service_functions.get_outdoor_measurements()
 
         # Run the scrip with the updated state variables
-        self.run_matlab_script('outdoor.mat', 'indoor.mat', 'fruit.mat')
+        if self.flag_run == True:
+            self.run_matlab_script('outdoor.mat', 'indoor.mat', 'fruit.mat')
+        else:
+            self.run_matlab_script(None, 'indoor.mat', 'fruit.mat')
         
         # Load the updated data from the .mat file
         self.load_mat_data()
