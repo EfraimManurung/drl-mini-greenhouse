@@ -86,6 +86,8 @@ class MiniGreenhouse2(gym.Env):
         
         # Initialize if the main program for training or running
         self.flag_run  = env_config.get("flag_run", True) # The simulation is for running (other option is False for training)
+        self.online_measurements = env_config.get("online_measurements", False) # Use online measurements or not from the IoT system 
+        # or just only using offline datasets
         self.first_day = env_config.get("first_day", 6) # The first day of the simulation
         
         # Define the season length parameter
@@ -97,13 +99,13 @@ class MiniGreenhouse2(gym.Env):
         self.season_length = env_config.get("seasong_length", 1 / 72) #* 3/4
         
         # Initiate and max steps
-        if self.flag_run == True or self.flag_run == False:
-            self.max_steps = env_config.get("max_steps", 4) # How many iteration the program run
-        
+        self.max_steps = env_config.get("max_steps", 4) # How many iteration the program run
+    
         # Start MATLAB engine
         self.eng = matlab.engine.start_matlab()
 
         # Path to MATLAB script
+        # Change path based on your directory!
         self.matlab_script_path = r'C:\Users\frm19\OneDrive - Wageningen University & Research\2. Thesis - Information Technology\3. Software Projects\drl-mini-greenhouse\matlab\DrlGlEnvironment.m'
 
         # Initialize lists to store control values
@@ -116,6 +118,7 @@ class MiniGreenhouse2(gym.Env):
         
         # Initialize reward
         reward = 0
+        # self.reward = 1
         
         # Record the reward for the first time
         self.rewards_list.extend([reward] * 3)
@@ -126,7 +129,7 @@ class MiniGreenhouse2(gym.Env):
         # Check if MATLAB script exists
         if os.path.isfile(self.matlab_script_path):
             
-            if self.flag_run == True:
+            if self.online_measurements == True:
                 # Initialize outdoor measurements, to get the outdoor measurements
                 self.service_functions.get_outdoor_measurements()
             
@@ -315,6 +318,8 @@ class MiniGreenhouse2(gym.Env):
             self.fruit_leaf = np.concatenate((self.fruit_leaf, new_fruit_leaf))
             self.fruit_stem = np.concatenate((self.fruit_stem, new_fruit_stem))
             self.fruit_dw = np.concatenate((self.fruit_dw, new_fruit_dw))
+            print("##########################")
+            print("SELF FRUIT_DW : ", self.fruit_dw)
 
     def reset(self, *, seed=None, options=None):
         '''
@@ -340,7 +345,7 @@ class MiniGreenhouse2(gym.Env):
         ], dtype=np.float32)
         return np.clip(obs, self.observation_space.low, self.observation_space.high)
 
-    def reward(self):
+    def get_reward(self):
         '''
         Get the reward for the current state.
         
@@ -355,12 +360,16 @@ class MiniGreenhouse2(gym.Env):
         # target_dw = 312.0
         
         # return 1.0 if self.fruit_dw[-1] > target_dw else -0.1
-        delta_fruit_dw = (self.fruit_dw[-2] - self.fruit_dw[-1])
+        delta_fruit_dw = (self.fruit_dw[-1] - self.fruit_dw[-2])
+        
         print("delta_fruit_dw: ", delta_fruit_dw)
+        
         if delta_fruit_dw > 0:
-            return delta_fruit_dw
+            reward = 1.2 * delta_fruit_dw
+            return reward
         else:
-            return 0.0
+            reward = 0.8 * delta_fruit_dw
+            return reward
         
     def delete_files(self):
         '''
@@ -373,7 +382,9 @@ class MiniGreenhouse2(gym.Env):
         os.remove('drl-env.mat')  # simulation file
         os.remove('indoor.mat')   # indoor measurements
         os.remove('fruit.mat')    # fruit growth
-        os.remove('outdoor.mat')  # outdoor measurements
+        # os.remove('outdoor.mat')  # outdoor measurements
+        if self.online_measurements == True:
+            os.remove('outdoor.mat')  # outdoor measurements
         
         
     def done(self):
@@ -506,12 +517,12 @@ class MiniGreenhouse2(gym.Env):
         # Save the fruit growth to .mat file
         sio.savemat('fruit.mat', fruit_growth)
         
-        if self.flag_run == True:
+        if self.online_measurements == True:
             # Get the outdoor measurements
             self.service_functions.get_outdoor_measurements()
 
         # Run the scrip with the updated state variables
-        if self.flag_run == True:
+        if self.online_measurements == True:
             self.run_matlab_script('outdoor.mat', 'indoor.mat', 'fruit.mat')
         else:
             self.run_matlab_script(None, 'indoor.mat', 'fruit.mat')
@@ -520,13 +531,13 @@ class MiniGreenhouse2(gym.Env):
         self.load_mat_data()
         
         # Calculate reward
-        reward = self.reward()
+        _reward = self.get_reward()
         
         # Record the reward
-        self.rewards_list.extend([reward] * 3)
+        self.rewards_list.extend([_reward] * 3)
 
         truncated = False
-        return self.observation(), reward, self.done(), truncated, {}
+        return self.observation(), _reward, self.done(), truncated, {}
 
     # Ensure to properly close the MATLAB engine when the environment is no longer used
     def __del__(self):

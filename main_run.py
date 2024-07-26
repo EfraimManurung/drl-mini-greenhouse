@@ -30,6 +30,7 @@ my_new_ppo = Algorithm.from_checkpoint('model/model-minigreenhouse-2')
 env = MiniGreenhouse2({"flag_run": True,
                         "first_day": 1,
                         "season_length": 1/72,
+                        "online_measurements": False,
                         "max_steps": 4
                         })
 
