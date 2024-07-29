@@ -299,4 +299,4 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
 
 
     %% Clear the workspace
-    % clear;
+    clear;

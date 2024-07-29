@@ -238,11 +238,11 @@ class MiniGreenhouse2(gym.Env):
                                             self.heater_list, self.rewards_list)
         
         # Show all the data in figures
-        self.service_functions.plot_all_data(time_steps_formatted, self.co2_in, self.temp_in, self.rh_in, \
+        self.service_functions.plot_all_data(self.max_steps, time_steps_formatted, self.co2_in, self.temp_in, self.rh_in, \
                                             self.PAR_in, self.fruit_leaf, self.fruit_stem, \
                                             self.fruit_dw, self.ventilation_list, self.lamps_list, \
                                             self.heater_list, self.rewards_list)
-    
+        
     def init_controls(self):
         '''
         Initialize control variables.
@@ -410,7 +410,7 @@ class MiniGreenhouse2(gym.Env):
         else:
             if self.current_step >= self.max_steps:
                 # Delete all files
-                self.delete_files()
+                # self.delete_files()
                 return True
             
         return False
@@ -457,7 +457,7 @@ class MiniGreenhouse2(gym.Env):
         # time_steps_seconds = np.linspace(300, 1200, 3)  # Time steps in seconds
         
         # Only publish MQTT data for the Raspberry Pi when running not training
-        if self.flag_run == True:
+        if self.online_measurements == True:
             # Format data controls in JSON format
             json_data = self.service_functions.format_data_in_JSON(time_steps, \
                                                 ventilation, lamps, \

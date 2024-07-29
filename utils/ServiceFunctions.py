@@ -141,7 +141,57 @@ class ServiceFunctions:
         return vaporPres
         
     
-    def plot_all_data(self, time, co2_in, temp_in, rh_in, PAR_in, fruit_leaf, fruit_stem, fruit_dw, ventilation, lamps, heater, rewards):
+    # def plot_all_data(self, time, co2_in, temp_in, rh_in, PAR_in, fruit_leaf, fruit_stem, fruit_dw, ventilation, lamps, heater, rewards):
+    #     '''
+    #     Plot all the appended data.
+        
+    #     Parameters:
+    #     - time: List of time values
+    #     - co2_in: List of CO2 values
+    #     - temp_in: List of temperature values
+    #     - rh_in: List of relative humidity values
+    #     - par_in: List of PAR values
+    #     - fruit_leaf: List of fruit leaf values
+    #     - fruit_stem: List of fruit stem values
+    #     - fruit_dw: List of fruit dry weight values
+    #     - ventilation: List of ventilation control values
+    #     - lamps: List of lamps control values
+    #     - heater: List of heater control values
+    #     '''
+        
+    #     # Create subplots with 4 rows and 3 columns
+    #     fig, axes = plt.subplots(nrows=4, ncols=3, figsize=(15, 10))
+        
+    #     # Data to be plotted along with their titles
+    #     data = [
+    #         (co2_in, 'CO2 In [ppm]'),
+    #         (temp_in, 'Temperature In [°C]'),
+    #         (rh_in, 'RH In [%]'),
+    #         (PAR_in, 'PAR In [W/m2]'),
+    #         (fruit_leaf, r'Fruit Leaf [mg (CH$_2$O) m$^{-2}$]'),
+    #         (fruit_stem, r'Fruit Stem [mg (CH$_2$O) m$^{-2}$]'),
+    #         (fruit_dw, r'Fruit Dry Weight [mg (CH$_2$O) m$^{-2}$]'),
+    #         (ventilation, 'Ventilation [-]'),
+    #         (lamps, 'Lamps [-]'),
+    #         (heater, 'Heater [-]'),
+    #         (rewards, 'Rewards [-]')
+    #     ]
+        
+    #     # Plot each dataset in a subplot
+    #     for i, (ax, (y_data, title)) in enumerate(zip(axes.flatten(), data)):
+    #         ax.plot(time, y_data)  # Plot data
+    #         # ax.set_title(title)  # Set the title of the subplot
+    #         ax.set_xlabel('Time')  # Set the x-axis label
+    #         ax.set_ylabel(title)  # Set the y-axis label
+    #         ax.tick_params(axis='x', rotation=45)  # Rotate x-axis labels for readability
+    #         ax.set_xticks(range(len(time)))  # Set the positions of the ticks on the x-axis
+    #         ax.set_xticklabels(time, rotation=45, ha='right')  # Set the tick labels on the x-axis
+        
+    #     # Adjust the layout to prevent overlap
+    #     plt.tight_layout()
+    #     plt.show()
+    
+    def plot_all_data(self, _data, time, co2_in, temp_in, rh_in, PAR_in, fruit_leaf, fruit_stem, fruit_dw, ventilation, lamps, heater, rewards):
         '''
         Plot all the appended data.
         
@@ -177,16 +227,34 @@ class ServiceFunctions:
             (rewards, 'Rewards [-]')
         ]
         
-        # Plot each dataset in a subplot
-        for i, (ax, (y_data, title)) in enumerate(zip(axes.flatten(), data)):
-            ax.plot(time, y_data)  # Plot data
-            # ax.set_title(title)  # Set the title of the subplot
-            ax.set_xlabel('Time')  # Set the x-axis label
-            ax.set_ylabel(title)  # Set the y-axis label
-            ax.tick_params(axis='x', rotation=45)  # Rotate x-axis labels for readability
-            ax.set_xticks(range(len(time)))  # Set the positions of the ticks on the x-axis
-            ax.set_xticklabels(time, rotation=45, ha='right')  # Set the tick labels on the x-axis
-        
+        if _data <= 4:
+            # Plot each dataset in a subplot
+            for i, (ax, (y_data, title)) in enumerate(zip(axes.flatten(), data)):
+                ax.plot(time, y_data)  # Plot data
+                # ax.set_title(title)  # Set the title of sthe subplot
+                ax.set_xlabel('Time')  # Set the x-axis label
+                ax.set_ylabel(title)  # Set the y-axis label
+                ax.tick_params(axis='x', rotation=45)  # Rotate x-axis labels for readability
+                ax.set_xticks(range(len(time)))  # Set the positions of the ticks on the x-axis
+                ax.set_xticklabels(time, rotation=45, ha='right')  # Set the tick labels on the x-axis
+           
+        elif _data >= 5: 
+            # Set x-axis labels at 4-hour intervals
+            interval = 1 * 12  # 4 hours * 12 (5-minute intervals per hour)
+            hourly_indices = np.arange(0, len(time), interval)
+            time_hourly_labels = [time[i] for i in hourly_indices]
+            
+            # Plot each dataset in a subplot
+            for i, (ax, (y_data, title)) in enumerate(zip(axes.flatten(), data)):
+                ax.plot(time, y_data)  # Plot data
+                ax.set_xlabel('Time')  # Set the x-axis label
+                ax.set_ylabel(title)  # Set the y-axis label
+                ax.tick_params(axis='x', rotation=45)  # Rotate x-axis labels for readability
+                
+                # Set the x-axis ticks and labels at 4-hour intervals
+                ax.set_xticks(hourly_indices)  # Set the positions of the ticks on the x-axis
+                ax.set_xticklabels(time_hourly_labels, rotation=45, ha='right')  # Set the tick labels on the x-axis
+            
         # Adjust the layout to prevent overlap
         plt.tight_layout()
         plt.show()
