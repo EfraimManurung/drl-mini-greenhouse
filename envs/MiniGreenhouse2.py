@@ -110,7 +110,7 @@ class MiniGreenhouse2(gym.Env):
 
         # Initialize lists to store control values
         self.ventilation_list = []
-        self.lamps_list = []
+        self.toplights_list = []
         self.heater_list = []
         
         # Initialize a list to store rewards
@@ -202,7 +202,7 @@ class MiniGreenhouse2(gym.Env):
         print(f"Length of Fruit stem: {len(self.fruit_stem)}")
         print(f"Length of Fruit Dry Weight: {len(self.fruit_dw)}")
         print(f"Length of Ventilation: {len(self.ventilation_list)}")
-        print(f"Length of Lamps: {len(self.lamps_list)}")
+        print(f"Length of toplights: {len(self.toplights_list)}")
         print(f"Length of Heater: {len(self.heater_list)}")
         print(f"Length of Rewards: {len(self.rewards_list)}")
         data = {
@@ -215,7 +215,7 @@ class MiniGreenhouse2(gym.Env):
             'Fruit stem': self.fruit_stem,
             'Fruit Dry Weight': self.fruit_dw,
             'Ventilation': self.ventilation_list,
-            'Lamps': self.lamps_list,
+            'Toplights': self.toplights_list,
             'Heater': self.heater_list,
             'Rewards': self.rewards_list
         }
@@ -234,13 +234,13 @@ class MiniGreenhouse2(gym.Env):
         # Save all the data in an excel file
         self.service_functions.export_to_excel('output/output_simulated_data-2.xlsx', time_steps_formatted, self.co2_in, self.temp_in, self.rh_in, \
                                             self.PAR_in, self.fruit_leaf, self.fruit_stem, \
-                                            self.fruit_dw, self.ventilation_list, self.lamps_list, \
+                                            self.fruit_dw, self.ventilation_list, self.toplights_list, \
                                             self.heater_list, self.rewards_list)
         
         # Show all the data in figures
         self.service_functions.plot_all_data(self.max_steps, time_steps_formatted, self.co2_in, self.temp_in, self.rh_in, \
                                             self.PAR_in, self.fruit_leaf, self.fruit_stem, \
-                                            self.fruit_dw, self.ventilation_list, self.lamps_list, \
+                                            self.fruit_dw, self.ventilation_list, self.toplights_list, \
                                             self.heater_list, self.rewards_list)
         
     def init_controls(self):
@@ -252,13 +252,13 @@ class MiniGreenhouse2(gym.Env):
         self.controls = {
             'time': time_steps.reshape(-1, 1),
             'ventilation': np.zeros(4).reshape(-1, 1),
-            'lamps': np.zeros(4).reshape(-1, 1),
+            'toplights': np.zeros(4).reshape(-1, 1),
             'heater': np.zeros(4).reshape(-1, 1)
         }
         
         # Append only the latest 3 values from each control variable 
         self.ventilation_list.extend(self.controls['ventilation'].flatten()[-3:])
-        self.lamps_list.extend(self.controls['lamps'].flatten()[-3:])
+        self.toplights_list.extend(self.controls['toplights'].flatten()[-3:])
         self.heater_list.extend(self.controls['heater'].flatten()[-3:])
         sio.savemat('controls.mat', self.controls)
         
@@ -434,7 +434,7 @@ class MiniGreenhouse2(gym.Env):
             
         return False
 
-    def step(self, action):
+    def step(self, _action):
         '''
         Take an action in the environment.
         
@@ -450,27 +450,27 @@ class MiniGreenhouse2(gym.Env):
         Returns:
             New observation, reward, terminated-flag (frome done method), truncated-flag, info-dict (empty).
         '''
-        print("ACTION: ", action)
+        print("ACTION: ", _action)
         
         # Convert actions to discrete values
-        fan = 1 if action[0] >= 0.5 else 0
-        toplighting = 1 if action[1] >= 0.5 else 0
-        heating = 1 if action[2] >= 0.5 else 0
+        ventilation = 1 if _action[0] >= 0.5 else 0
+        toplights = 1 if _action[1] >= 0.5 else 0
+        heater = 1 if _action[2] >= 0.5 else 0
         
         print("CONVERTED ACTION")
-        print("fan: ", fan)
-        print("toplighting: ", toplighting)
-        print("heating: ", heating)
+        print("ventilation: ", ventilation)
+        print("toplights: ", toplights)
+        print("heating: ", heater)
 
         time_steps = np.linspace(300, 1200, 4)
-        ventilation = np.full(4, fan)
-        lamps = np.full(4, toplighting)
-        heater = np.full(4, heating)
+        ventilation = np.full(4, ventilation)
+        toplights = np.full(4, toplights)
+        heater = np.full(4, heater)
 
         # Keep only the latest 3 data points before appending
         # Append controls to the lists
         self.ventilation_list.extend(ventilation[-3:])
-        self.lamps_list.extend(lamps[-3:])
+        self.toplights_list.extend(toplights[-3:])
         self.heater_list.extend(heater[-3:])
         
         # time_steps_seconds = np.linspace(300, 1200, 3)  # Time steps in seconds
@@ -479,7 +479,7 @@ class MiniGreenhouse2(gym.Env):
         if self.online_measurements == True:
             # Format data controls in JSON format
             json_data = self.service_functions.format_data_in_JSON(time_steps, \
-                                                ventilation, lamps, \
+                                                ventilation, toplights, \
                                                 heater)
             
             # Publish controls to the raspberry pi (IoT system client)
@@ -489,7 +489,7 @@ class MiniGreenhouse2(gym.Env):
         controls = {
             'time': time_steps.reshape(-1, 1),
             'ventilation': ventilation.reshape(-1, 1),
-            'lamps': lamps.reshape(-1, 1),
+            'toplights': toplights.reshape(-1, 1),
             'heater': heater.reshape(-1, 1)
         }
         
