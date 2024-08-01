@@ -240,7 +240,7 @@ class ServiceFunctions:
            
         elif _data >= 5: 
             # Set x-axis labels at 4-hour intervals
-            interval = 1 * 12  # 4 hours * 12 (5-minute intervals per hour)
+            interval = 2 * 12  # 4 hours * 12 (5-minute intervals per hour)
             hourly_indices = np.arange(0, len(time), interval)
             time_hourly_labels = [time[i] for i in hourly_indices]
             

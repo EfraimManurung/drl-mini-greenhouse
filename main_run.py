@@ -24,14 +24,15 @@ from envs.MiniGreenhouse2 import MiniGreenhouse2
 # that has the exact same state as the old one, from which the checkpoint was
 # created in the first place:
 
-my_new_ppo = Algorithm.from_checkpoint('model/model-minigreenhouse-2')
+# my_new_ppo = Algorithm.from_checkpoint('model/model-minigreenhouse-5')
+my_new_ppo = Algorithm.from_checkpoint('model/model-minigreenhouse-lstm-2')
 
 # Call the MiniGreenhouse instance
 env = MiniGreenhouse2({"flag_run": True,
-                        "first_day": 6.5,
+                        "first_day": 1,
                         "season_length": 1/72,
-                        "online_measurements": False,
-                        "max_steps": 4 #8 * 12
+                        "online_measurements": True,
+                        "max_steps": 4 #96 #12 #8 * 12
                         })
 
 # Get the initial observation (should be: [0.0] for the starting position).

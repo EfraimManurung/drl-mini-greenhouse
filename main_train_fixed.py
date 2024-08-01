@@ -6,7 +6,6 @@ from ray.rllib.algorithms.ppo import PPOConfig
 from envs.MiniGreenhouse2 import MiniGreenhouse2
 
 # Import support libraries
-import math
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import os
@@ -23,21 +22,15 @@ config = (
             "max_steps": 4
         })
     #.env_runners(num_envs_per_env_runner=2)
-    .training(train_batch_size=2, sgd_minibatch_size=1)
+    .training(train_batch_size=10, sgd_minibatch_size=2)
 )
 
 # Build.
 algo = config.build()
 
-# Initialize lists to store reward values
-avg_rewards_list = []
-
-# Give initial values for reward
-sum_rewards = 0
-
 # Train the model for a number of iterations
 # 1 iteration mean 1 hour because 1 iteration has 4 time-steps that equal to 1 hour in real-time
-iterations = 40
+iterations = 480
 
 for i in tqdm(range(iterations)):
     results = algo.train()
@@ -46,33 +39,15 @@ for i in tqdm(range(iterations)):
     
     # Print the rewards
     print(f"Iter: {i}; avg. rewards={reward}")
-    
-    if math.isnan(reward):
-        reward = 0
-        sum_rewards += reward
-        avg_rewards_list.append(sum_rewards)
-    else:
-        sum_rewards += reward
-        avg_rewards_list.append(sum_rewards)
-    
-print(f"Average rewards for {iterations} iterations : ", avg_rewards_list)
-    
+
 # Save the model checkpoint
-save_result = algo.save('model/model-minigreenhouse-4')
+save_result = algo.save('model/model-minigreenhouse-6')
 
 path_to_checkpoint = save_result
 print(
     "An Algorithm checkpoint has been created inside directory: "
     f"'{path_to_checkpoint}'."
 )
-
-# Plotting the results
-plt.plot(range(iterations), avg_rewards_list, marker='o')
-plt.xlabel('Iterations [-]')
-plt.ylabel('Sum of Rewards [-]')
-plt.title('Sum of Rewards over Iterations')
-plt.grid(True)
-plt.show()
 
 # Remove unnecessary variables
 os.remove('controls.mat') # controls file

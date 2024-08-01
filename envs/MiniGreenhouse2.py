@@ -88,7 +88,7 @@ class MiniGreenhouse2(gym.Env):
         self.flag_run  = env_config.get("flag_run", True) # The simulation is for running (other option is False for training)
         self.online_measurements = env_config.get("online_measurements", False) # Use online measurements or not from the IoT system 
         # or just only using offline datasets
-        self.first_day = env_config.get("first_day", 6) # The first day of the simulation
+        self.first_day = env_config.get("first_day", 1) # The first day of the simulation
         
         # Define the season length parameter
         # 20 minutes
@@ -96,7 +96,7 @@ class MiniGreenhouse2(gym.Env):
         # only count for the 15 minutes
         # The calculation look like this:
         # 1 / 72 * 24 [hours] * 60 [minutes / hours] = 20 minutes  
-        self.season_length = env_config.get("seasong_length", 1 / 72) #* 3/4
+        self.season_length = env_config.get("season_length", 1 / 72) #* 3/4
         
         # Initiate and max steps
         self.max_steps = env_config.get("max_steps", 4) # How many iteration the program run
@@ -173,9 +173,9 @@ class MiniGreenhouse2(gym.Env):
         
         # Define observation and action spaces
         self.observation_space = Box(
-            low=np.array([393.72, 21.39, 50.36, 0.00, 0, 0, 0], dtype=np.float32), 
-            high=np.array([1933.33, 24.53, 90.00, 5.85, np.inf, np.inf, np.inf], dtype=np.float32), 
-            dtype=np.float32
+            low=np.array([0.0, 10.00, 0.00, 0.00, 0, 0, 0]), # In order: CO2, Temperature, Humidity, PAR-in, Fruit Leaf, Fruit Stem, and Fruit Dry Weight
+            high=np.array([2000.0, 30.00, 90.00, 25.00, np.inf, np.inf, np.inf]), 
+            dtype=np.float64
         )
         
         self.action_space = Box(
@@ -318,8 +318,6 @@ class MiniGreenhouse2(gym.Env):
             self.fruit_leaf = np.concatenate((self.fruit_leaf, new_fruit_leaf))
             self.fruit_stem = np.concatenate((self.fruit_stem, new_fruit_stem))
             self.fruit_dw = np.concatenate((self.fruit_dw, new_fruit_dw))
-            print("##########################")
-            print("SELF FRUIT_DW : ", self.fruit_dw)
 
     def reset(self, *, seed=None, options=None):
         '''
@@ -334,7 +332,8 @@ class MiniGreenhouse2(gym.Env):
         return self.observation(), {}
 
     def observation(self):
-        obs = np.array([
+        
+        return np.array([
             self.co2_in[-1], 
             self.temp_in[-1], 
             self.rh_in[-1], 
@@ -342,34 +341,51 @@ class MiniGreenhouse2(gym.Env):
             self.fruit_leaf[-1], 
             self.fruit_stem[-1], 
             self.fruit_dw[-1]
-        ], dtype=np.float32)
-        return np.clip(obs, self.observation_space.low, self.observation_space.high)
+        ], np.float32)
+       
 
     def get_reward(self):
         '''
         Get the reward for the current state.
         
         Returns:
-        int: Reward, 1 if the fruit dry weight increased, otherwise 0.
+        int: Adjust the reward based on whether the total yield meets or exceeds the incremental target yield. 
+        Increase the reward by a factor of 1.2 if the target is met, otherwise decrease it by a factor of 0.8.
         '''
         
         if self.current_step == 0:
             return 0.0 # No reward for the initial state 
         
-        # Target dry weight as the goal
-        # target_dw = 312.0
-        
-        # return 1.0 if self.fruit_dw[-1] > target_dw else -0.1
+        # In the createCropModel.m in the GreenLight model (mini-greenhouse-model)
+        # cFruit or dry weight of fruit is the carbohydrates in fruit, so it is the best variable to count for the reward
+        # Calculate the change in fruit dry weight
         delta_fruit_dw = (self.fruit_dw[-1] - self.fruit_dw[-2])
-        
         print("delta_fruit_dw: ", delta_fruit_dw)
         
-        if delta_fruit_dw > 0:
-            reward = 1.2 * delta_fruit_dw
-            return reward
-        else:
-            reward = 0.8 * delta_fruit_dw
-            return reward
+        # Reward scaling
+        
+        
+        # Define a target yield for the episode
+        # target_yield = 312.0 # Example target yield value, we can adjust this
+        
+        # Calculate the incremental target yield based on progress
+        # progress = self.current_step / self.max_steps
+        # incremental_target_yield = target_yield * (0.1 + 0.9 * progress)
+        
+        # Get the latest value of fruit dry weight growth
+        # total_yield = self.fruit_dw[-1]
+        
+        # Check if the total yield meets the incremental target yield
+        # if total_yield >= incremental_target_yield:
+        # if target_yield >= total_yield: 
+        #     reward = 1.2 * delta_fruit_dw  # Increase reward if target met
+        # else:
+        #     reward = 0.8 * delta_fruit_dw  # Decrease reward if target not met
+        
+        #print(f"progress: {progress:.2%}, incremental_target_yield: {incremental_target_yield}, total_yield: {total_yield}, reward: {reward}")
+        
+        # return reward
+        return delta_fruit_dw
         
     def delete_files(self):
         '''
@@ -397,8 +413,10 @@ class MiniGreenhouse2(gym.Env):
         
         # Episode is done if we have reached the target
         # We print all the physical parameters and controls
-    
+
         if self.flag_run == True:
+            # Terminated when current step is same value with max_steps 
+            # In one episode, for example if the max_step = 4, that mean 1 episode is for 1 hour in real-time (real-measurements)
             if self.current_step >= self.max_steps:
                 
                 # Print and save all data
@@ -406,6 +424,7 @@ class MiniGreenhouse2(gym.Env):
                 
                 # Delete all files
                 self.delete_files()
+                
                 return True
         else:
             if self.current_step >= self.max_steps:
@@ -428,8 +447,8 @@ class MiniGreenhouse2(gym.Env):
         -  u2(t) Toplighting status (-)        0/1 (1 is on)
         -  u3(t) Heating (-)                   0/1 (1 is on)
 
-        Returns: 
-        tuple: A tuple containing the new observation, reward, done flag, and additional info.
+        Returns:
+            New observation, reward, terminated-flag (frome done method), truncated-flag, info-dict (empty).
         '''
         print("ACTION: ", action)
         
@@ -536,7 +555,9 @@ class MiniGreenhouse2(gym.Env):
         # Record the reward
         self.rewards_list.extend([_reward] * 3)
 
+        # Truncated flag
         truncated = False
+    
         return self.observation(), _reward, self.done(), truncated, {}
 
     # Ensure to properly close the MATLAB engine when the environment is no longer used
