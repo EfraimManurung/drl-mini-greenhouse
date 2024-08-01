@@ -349,7 +349,7 @@ class MiniGreenhouse(gym.Env):
         Get the reward for the current state.
         
         The reward function defines the immediate reward obtained by the agent for its actions in a given state. 
-        Changed based on the MiniGreenhouse environment. 
+        Changed based on the MiniGreenhouse environment from the equation (4) in the source.
         
         Source: Bridging the reality gap: An Adaptive Framework for Autonomous Greenhouse 
         Control with Deep Reinforcement Learning. George Qi. Wageningen University. 2024.
@@ -360,13 +360,29 @@ class MiniGreenhouse(gym.Env):
         r(k): the imediate reward the agent receives at time step k.
         w_r,y1 * Δy1(k): represents the positive reward for the agent due to increased in the fruit dry weight Δy1(k).
         Σ (from i=1 to 3) w_r,ai * ai(k): represents the negative reward received by the agent due to cost energy with arbitrary 
-    
+
+        Obtained coefficient setting for the reward function.
+        Coefficients        Values          Details
+        w_r_y1              1               Fruit dry weight 
+        w_r_a1              0.005           Ventilation
+        w_r_a2              0.015           Toplights
+        w_r_a3              0.001           Heater
+        
         Returns:
         int: the immediate reward the agent receives at time step k in integer.
         '''
         
+        # Initialize variables, based on the equation above
+        # Need to be determined to make the r_k unitless
+        w_r_y1 = 1          # Fruit dry weight 
+        w_r_a1 = 0.005      # Ventilation
+        w_r_a2 = 0.015      # Toplights
+        w_r_a3 = 0.001      # Heater
+        
+        # Give initial reward 
         if self.current_step == 0:
-            return 0.0 # No reward for the initial state 
+            r_k = 0.0
+            return r_k # No reward for the initial state 
         
         # In the createCropModel.m in the GreenLight model (mini-greenhouse-model)
         # cFruit or dry weight of fruit is the carbohydrates in fruit, so it is the best variable to count for the reward
@@ -374,7 +390,10 @@ class MiniGreenhouse(gym.Env):
         delta_fruit_dw = (self.fruit_dw[-1] - self.fruit_dw[-2])
         print("delta_fruit_dw: ", delta_fruit_dw)
         
-        return delta_fruit_dw
+        r_k = w_r_y1 * delta_fruit_dw - ((w_r_a1 * _ventilation) + (w_r_a2 * _toplights) + (w_r_a3 * _heater))
+        print("r_k immediate reward: ", r_k)
+        
+        return r_k
         
     def delete_files(self):
         '''
@@ -432,9 +451,9 @@ class MiniGreenhouse(gym.Env):
         Based on the u(t) controls
         
         action (discrete integer):
-        -  u1(t) Fan (-)                       0-1 (1 is fully open) 
-        -  u2(t) Toplighting status (-)        0/1 (1 is on)
-        -  u3(t) Heating (-)                   0/1 (1 is on)
+        -  u1(t) Ventilation (-)               0-1 (1 is fully open) 
+        -  u2(t) Toplights (-)                 0/1 (1 is on)
+        -  u3(t) Heater (-)                    0/1 (1 is on)
 
         Returns:
             New observation, reward, terminated-flag (frome done method), truncated-flag, info-dict (empty).
@@ -539,7 +558,8 @@ class MiniGreenhouse(gym.Env):
         self.load_mat_data()
         
         # Calculate reward
-        _reward = self.get_reward(ventilation, toplights, heater)
+        # Remember that the actions become a list, but we only need the first actions from 15 minutes (all of the is the same)
+        _reward = self.get_reward(ventilation[0], toplights[0], heater[0])
         
         # Record the reward
         self.rewards_list.extend([_reward] * 3)

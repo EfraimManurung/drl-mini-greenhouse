@@ -3,7 +3,7 @@
 from ray.rllib.algorithms.ppo import PPOConfig
 
 # Import the custom environment
-from envs.MiniGreenhouse2 import MiniGreenhouse2
+from envs.MiniGreenhouse import MiniGreenhouse
 
 # Import support libraries
 import matplotlib.pyplot as plt
@@ -18,7 +18,7 @@ config = PPOConfig()
 config.rollouts(num_rollout_workers=1)
 config.resources(num_cpus_per_worker=1)
 config.environment(
-    env=MiniGreenhouse2,
+    env=MiniGreenhouse,
         env_config={
             "flag_run": False,
             "first_day": 1,
@@ -44,14 +44,14 @@ config.training(
 algo = config.build()
 
 # Train the algorithm
-for episode in tqdm(range(480)):  # Train for 250 episodes
+for episode in tqdm(range(10)):  # Train for 250 episodes
     result = algo.train()  # Perform training
     # if episode % 5 == 0:  # Save a checkpoint every 5 episodes
     #     checkpoint_dir = algo.save().checkpoint.path
     #     print(f"Checkpoint saved in directory {checkpoint_dir}")
         
 # Save the model checkpoint
-save_result = algo.save('model/model-minigreenhouse-config-1')
+save_result = algo.save('model/model-minigreenhouse-config-2')
 
 path_to_checkpoint = save_result
 print(
