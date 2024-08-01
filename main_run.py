@@ -18,7 +18,7 @@ import time
 from ray.rllib.algorithms.ppo import PPOConfig
 
 # Import the custom environment
-from envs.MiniGreenhouse2 import MiniGreenhouse2
+from envs.MiniGreenhouse import MiniGreenhouse
 
 # Use the Algorithm's `from_checkpoint` utility to get a new algo instance
 # that has the exact same state as the old one, from which the checkpoint was
@@ -28,10 +28,10 @@ from envs.MiniGreenhouse2 import MiniGreenhouse2
 my_new_ppo = Algorithm.from_checkpoint('model/model-minigreenhouse-lstm-2')
 
 # Call the MiniGreenhouse instance
-env = MiniGreenhouse2({"flag_run": True,
+env = MiniGreenhouse({"flag_run": True,
                         "first_day": 1,
                         "season_length": 1/72,
-                        "online_measurements": True,
+                        "online_measurements": False,
                         "max_steps": 4 #96 #12 #8 * 12
                         })
 
@@ -48,7 +48,7 @@ while not terminated and not truncated:
     # Compute a single action, given the current observation
     # from the environment.
     action = my_new_ppo.compute_single_action(obs)
-    print("ACTION: ", action)
+    #print("ACTION: ", action)
     
     # Apply the computed action in the environment.
     obs, reward, terminated, _, info = env.step(action)

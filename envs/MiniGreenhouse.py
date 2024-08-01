@@ -60,40 +60,57 @@ import numpy as np
 import scipy.io as sio
 import matlab.engine
 import os
-import pandas as pd
 from datetime import timedelta
+import pandas as pd
 
 # Import service functions
 from utils.ServiceFunctions import ServiceFunctions
-
-# Set NumPy print options
-np.set_printoptions(precision=2, suppress=True)
 
 class MiniGreenhouse(gym.Env):
     '''
     MiniGreenhouse environment, a custom environment based on the GreenLight model
     and real mini-greenhouse.
+    
+    Link the Python code to matlab program with related methods.
     '''
-   
-    def __init__(self, env_config, _first_day = 6, max_steps = 100):
+    
+    def __init__(self, env_config):
         '''
         Initialize the MiniGreenhouse environment.
         
         Parameters:
         env_config(dict): Configuration dictionary for the environment.
         '''  
-        # Initiate and max steps
-        self.max_steps = max_steps
         
+        print("MiniGreenhouse2 Environment Start!!")
+        
+        # Initialize if the main program for training or running
+        self.flag_run  = env_config.get("flag_run", True) # The simulation is for running (other option is False for training)
+        self.online_measurements = env_config.get("online_measurements", False) # Use online measurements or not from the IoT system 
+        # or just only using offline datasets
+        self.first_day = env_config.get("first_day", 1) # The first day of the simulation
+        
+        # Define the season length parameter
+        # 20 minutes
+        # But remember, the first 5 minutes is the initial values so
+        # only count for the 15 minutes
+        # The calculation look like this:
+        # 1 / 72 * 24 [hours] * 60 [minutes / hours] = 20 minutes  
+        self.season_length = env_config.get("season_length", 1 / 72) #* 3/4
+        
+        # Initiate and max steps
+        self.max_steps = env_config.get("max_steps", 4) # How many iteration the program run
+    
         # Start MATLAB engine
         self.eng = matlab.engine.start_matlab()
 
-        # Define the path to your MATLAB script
+        # Path to MATLAB script
+        # Change path based on your directory!
         self.matlab_script_path = r'C:\Users\frm19\OneDrive - Wageningen University & Research\2. Thesis - Information Technology\3. Software Projects\drl-mini-greenhouse\matlab\DrlGlEnvironment.m'
 
         # Initialize lists to store control values
         self.ventilation_list = []
-        self.lamps_list = []
+        self.toplights_list = []
         self.heater_list = []
         
         # Initialize a list to store rewards
@@ -101,184 +118,38 @@ class MiniGreenhouse(gym.Env):
         
         # Initialize reward
         reward = 0
+        # self.reward = 1
         
         # Record the reward for the first time
         self.rewards_list.extend([reward] * 3)
-        
+
         # Initialize ServiceFunctions
         self.service_functions = ServiceFunctions()
-        
-        # Check if the file exists
+
+        # Check if MATLAB script exists
         if os.path.isfile(self.matlab_script_path):
-            print(f"Running MATLAB script: {self.matlab_script_path}")
             
-            # Define the season length parameter
-            # 20 minutes
-            # But remember, the first 5 minutes is the initial values so
-            # only count for the 15 minutes
-            self.season_length = 1 / 72  
-            self.first_day = _first_day
+            if self.online_measurements == True:
+                # Initialize outdoor measurements, to get the outdoor measurements
+                self.service_functions.get_outdoor_measurements()
             
-            # Initialize control variables to zero for 2 timesteps
+            # Initialize control variables to zero 
             self.init_controls()
             
-            # Call the MATLAB function with the parameter
+            # Call the MATLAB function without the parameter
             self.run_matlab_script()
         else:
             print(f"MATLAB script not found: {self.matlab_script_path}")
 
         # Load the data from the .mat file
         self.load_mat_data()
-    
-        # Define the observation and action spaces
+        
+        # Define the observation and action space
         self.define_spaces()
         
         # Initialize the state
         self.reset()
-
-    def init_controls(self):
-        '''
-        Initialize control variables.
-        '''
-        time_steps = np.linspace(300, 1200, 4)  # 15 minutes (900 seconds)
-        self.controls = {
-            'time': time_steps.reshape(-1, 1),
-            'ventilation': np.zeros(4).reshape(-1, 1),
-            'lamps': np.zeros(4).reshape(-1, 1),
-            'heater': np.zeros(4).reshape(-1, 1)
-        }
-        
-        # Append controls to the lists twice
-        # self.ventilation_list.extend(self.controls['ventilation'].flatten())
-        # self.lamps_list.extend(self.controls['lamps'].flatten())
-        # self.heater_list.extend(self.controls['heater'].flatten())
-        
-        # Append only the latest 3 values from each control variable
-        self.ventilation_list.extend(self.controls['ventilation'].flatten()[-3:])
-        self.lamps_list.extend(self.controls['lamps'].flatten()[-3:])
-        self.heater_list.extend(self.controls['heater'].flatten()[-3:])
     
-        sio.savemat('controls.mat', self.controls)
-
-    def run_matlab_script(self, indoor_file=None, fruit_file=None):
-        '''
-        Run the MATLAB script.
-        '''
-        
-        # Check if the indoor_file or fruit_file is None
-        if indoor_file is None:
-            indoor_file = []
-        
-        if fruit_file is None:
-            fruit_file = []
-
-        self.eng.DrlGlEnvironment(self.season_length, self.first_day, 'controls.mat', indoor_file, fruit_file, nargout=0)
-
-    def load_mat_data(self):
-        '''
-        Load data from the .mat file.
-        
-        From matlab, the structure is:
-        
-        save('drl-env.mat', 'time', 'temp_in', 'rh_in', 'co2_in', 'PAR_in', 'fruit_leaf', 'fruit_stem', 'fruit_dw');
-        '''
-        
-        data = sio.loadmat("drl-env.mat")
-        new_time = data['time'].flatten()[-3:]
-        new_co2_in = data['co2_in'].flatten()[-3:]
-        new_temp_in = data['temp_in'].flatten()[-3:]
-        new_rh_in = data['rh_in'].flatten()[-3:]
-        new_PAR_in = data['PAR_in'].flatten()[-3:]
-        new_fruit_leaf = data['fruit_leaf'].flatten()[-3:]
-        new_fruit_stem = data['fruit_stem'].flatten()[-3:]
-        new_fruit_dw = data['fruit_dw'].flatten()[-3:]
-        
-        # Print updates
-        print(f"Updating data - new lengths: time={len(new_time)}, co2_in={len(new_co2_in)}, "
-            f"temp_in={len(new_temp_in)}, rh_in={len(new_rh_in)}, PAR_in={len(new_PAR_in)}, "
-            f"fruit_leaf={len(new_fruit_leaf)}, fruit_stem={len(new_fruit_stem)}, fruit_dw={len(new_fruit_dw)}")
-        
-        # Check if attributes exist, if not initialize them
-        if not hasattr(self, 'time'):
-            self.time = new_time
-            self.co2_in = new_co2_in
-            self.temp_in = new_temp_in
-            self.rh_in = new_rh_in
-            self.PAR_in = new_PAR_in
-            self.fruit_leaf = new_fruit_leaf
-            self.fruit_stem = new_fruit_stem
-            self.fruit_dw = new_fruit_dw
-        else:
-            self.time = np.concatenate((self.time, new_time))
-            self.co2_in = np.concatenate((self.co2_in, new_co2_in))
-            self.temp_in = np.concatenate((self.temp_in, new_temp_in))
-            self.rh_in = np.concatenate((self.rh_in, new_rh_in))
-            self.PAR_in = np.concatenate((self.PAR_in, new_PAR_in))
-            self.fruit_leaf = np.concatenate((self.fruit_leaf, new_fruit_leaf))
-            self.fruit_stem = np.concatenate((self.fruit_stem, new_fruit_stem))
-            self.fruit_dw = np.concatenate((self.fruit_dw, new_fruit_dw))
-        
-        # Add debug information to verify data loading
-        print(
-            f"Loaded data lengths: time={len(self.time)}, co2_in={len(self.co2_in)}, "
-            f"temp_in={len(self.temp_in)}, rh_in={len(self.rh_in)}, PAR_in={len(self.PAR_in)}, "
-            f"fruit_leaf={len(self.fruit_leaf)}, fruit_stem={len(self.fruit_stem)}, fruit_dw={len(self.fruit_dw)}, "
-            f"ventilation={len(self.ventilation_list)}, lamps={len(self.lamps_list)}, heater={len(self.heater_list)}"
-        )
-        
-    def print_all_data(self):
-        '''
-        Print all the appended data.
-        '''
-        print("")
-        print("")
-        print("-------------------------------------------------------------------------------------")
-        print("Print all the appended data.")
-        # Print lengths of each list to identify discrepancies
-        print(f"Length of Time: {len(self.time)}")
-        print(f"Length of CO2 In: {len(self.co2_in)}")
-        print(f"Length of Temperature In: {len(self.temp_in)}")
-        print(f"Length of RH In: {len(self.rh_in)}")
-        print(f"Length of PAR In: {len(self.PAR_in)}")
-        print(f"Length of Fruit leaf: {len(self.fruit_leaf)}")
-        print(f"Length of Fruit stem: {len(self.fruit_stem)}")
-        print(f"Length of Fruit Dry Weight: {len(self.fruit_dw)}")
-        print(f"Length of Ventilation: {len(self.ventilation_list)}")
-        print(f"Length of Lamps: {len(self.lamps_list)}")
-        print(f"Length of Heater: {len(self.heater_list)}")
-        print(f"Length of Rewards: {len(self.rewards_list)}")
-        data = {
-            'Time': self.time,
-            'CO2 In': self.co2_in,
-            'Temperature In': self.temp_in,
-            'RH In': self.rh_in,
-            'PAR In': self.PAR_in,
-            'Fruit leaf': self.fruit_leaf,
-            'Fruit stem': self.fruit_stem,
-            'Fruit Dry Weight': self.fruit_dw,
-            'Ventilation': self.ventilation_list,
-            'Lamps': self.lamps_list,
-            'Heater': self.heater_list,
-            'Rewards': self.rewards_list
-        }
-        
-        df = pd.DataFrame(data)
-        print(df)
-        
-        # time_max = (self.max_steps + 1) * 900 # for e.g. 4 steps * 900 (15 minutes) = 60 minutes
-        # time_steps_seconds = np.linspace(300, time_max, (self.max_steps + 1) * 3)  # Time steps in seconds
-        time_max = self.max_steps * 900 # for e.g. 4 steps * 900 (15 minutes) = 60 minutes
-        time_steps_seconds = np.linspace(300, time_max, self.max_steps  * 3)  # Time steps in seconds
-        time_steps_hours = time_steps_seconds / 3600  # Convert seconds to hours
-        time_steps_formatted = [str(timedelta(hours=h))[:-3] for h in time_steps_hours]  # Format to HH:MM
-        print("time_steps_plot (in HH:MM format):", time_steps_formatted)
-        
-        # Show all the data in figures
-        self.service_functions.plot_all_data(time_steps_formatted, self.co2_in, self.temp_in, self.rh_in, \
-                                            self.PAR_in, self.fruit_leaf, self.fruit_stem, \
-                                            self.fruit_dw, self.ventilation_list, self.lamps_list, \
-                                            self.heater_list, self.rewards_list)
-
     def define_spaces(self):
         '''
         Define the observation and action spaces.
@@ -299,18 +170,155 @@ class MiniGreenhouse(gym.Env):
         PAR Inside (W/m^2) - Max: 5.85, Min: 0.00
         
         '''
+        
+        # Define observation and action spaces
         self.observation_space = Box(
-            low=np.array([393.72, 21.39, 50.36, 0.00, 0, 0, 0]), 
-            high=np.array([1933.33, 24.53, 68.92, 5.85, np.inf, np.inf, np.inf]), 
-            dtype=np.float32
+            low=np.array([0.0, 10.00, 0.00, 0.00, 0, 0, 0]), # In order: CO2, Temperature, Humidity, PAR-in, Fruit Leaf, Fruit Stem, and Fruit Dry Weight
+            high=np.array([2000.0, 30.00, 90.00, 25.00, np.inf, np.inf, np.inf]), 
+            dtype=np.float64
         )
         
         self.action_space = Box(
-            low=np.array([0, 0, 0]), 
-            high=np.array([1, 1, 1]), 
+            low=np.array([0, 0, 0], dtype=np.float32), 
+            high=np.array([1, 1, 1], dtype=np.float32), 
             dtype=np.float32
         )
-    
+
+    def print_and_save_all_data(self):
+        '''
+        Print all the appended data.
+        '''
+        print("")
+        print("")
+        print("-------------------------------------------------------------------------------------")
+        print("Print all the appended data.")
+        # Print lengths of each list to identify discrepancies
+        print(f"Length of Time: {len(self.time)}")
+        print(f"Length of CO2 In: {len(self.co2_in)}")
+        print(f"Length of Temperature In: {len(self.temp_in)}")
+        print(f"Length of RH In: {len(self.rh_in)}")
+        print(f"Length of PAR In: {len(self.PAR_in)}")
+        print(f"Length of Fruit leaf: {len(self.fruit_leaf)}")
+        print(f"Length of Fruit stem: {len(self.fruit_stem)}")
+        print(f"Length of Fruit Dry Weight: {len(self.fruit_dw)}")
+        print(f"Length of Ventilation: {len(self.ventilation_list)}")
+        print(f"Length of toplights: {len(self.toplights_list)}")
+        print(f"Length of Heater: {len(self.heater_list)}")
+        print(f"Length of Rewards: {len(self.rewards_list)}")
+        data = {
+            'Time': self.time,
+            'CO2 In': self.co2_in,
+            'Temperature In': self.temp_in,
+            'RH In': self.rh_in,
+            'PAR In': self.PAR_in,
+            'Fruit leaf': self.fruit_leaf,
+            'Fruit stem': self.fruit_stem,
+            'Fruit Dry Weight': self.fruit_dw,
+            'Ventilation': self.ventilation_list,
+            'Toplights': self.toplights_list,
+            'Heater': self.heater_list,
+            'Rewards': self.rewards_list
+        }
+        
+        df = pd.DataFrame(data)
+        print(df)
+        
+        # time_max = (self.max_steps + 1) * 900 # for e.g. 4 steps * 900 (15 minutes) = 60 minutes
+        # time_steps_seconds = np.linspace(300, time_max, (self.max_steps + 1) * 3)  # Time steps in seconds
+        time_max = (self.max_steps + 1) * 900 # for e.g. 4 steps * 900 (15 minutes) = 60 minutes
+        time_steps_seconds = np.linspace(300, time_max, (self.max_steps + 1)  * 3)  # Time steps in seconds
+        time_steps_hours = time_steps_seconds / 3600  # Convert seconds to hours
+        time_steps_formatted = [str(timedelta(hours=h))[:-3] for h in time_steps_hours]  # Format to HH:MM
+        print("time_steps_plot (in HH:MM format):", time_steps_formatted)
+        
+        # Save all the data in an excel file
+        self.service_functions.export_to_excel('output/output_simulated_data-2.xlsx', time_steps_formatted, self.co2_in, self.temp_in, self.rh_in, \
+                                            self.PAR_in, self.fruit_leaf, self.fruit_stem, \
+                                            self.fruit_dw, self.ventilation_list, self.toplights_list, \
+                                            self.heater_list, self.rewards_list)
+        
+        # Show all the data in figures
+        self.service_functions.plot_all_data(self.max_steps, time_steps_formatted, self.co2_in, self.temp_in, self.rh_in, \
+                                            self.PAR_in, self.fruit_leaf, self.fruit_stem, \
+                                            self.fruit_dw, self.ventilation_list, self.toplights_list, \
+                                            self.heater_list, self.rewards_list)
+        
+    def init_controls(self):
+        '''
+        Initialize control variables.
+        '''
+        
+        time_steps = np.linspace(300, 1200, 4) # 15 minutes (900 seconds)
+        self.controls = {
+            'time': time_steps.reshape(-1, 1),
+            'ventilation': np.zeros(4).reshape(-1, 1),
+            'toplights': np.zeros(4).reshape(-1, 1),
+            'heater': np.zeros(4).reshape(-1, 1)
+        }
+        
+        # Append only the latest 3 values from each control variable 
+        self.ventilation_list.extend(self.controls['ventilation'].flatten()[-3:])
+        self.toplights_list.extend(self.controls['toplights'].flatten()[-3:])
+        self.heater_list.extend(self.controls['heater'].flatten()[-3:])
+        sio.savemat('controls.mat', self.controls)
+        
+    def run_matlab_script(self, outdoor_file = None, indoor_file=None, fruit_file=None):
+        '''
+        Run the MATLAB script.
+        '''
+        # Check if the outdoor_file or indoor_file or fruit_file is None
+        if indoor_file is None:
+            indoor_file = []
+        
+        if fruit_file is None:
+            fruit_file = []
+        
+        if outdoor_file is None:
+            outdoor_file = []
+
+        self.eng.DrlGlEnvironment(self.season_length, self.first_day, 'controls.mat', outdoor_file, indoor_file, fruit_file, nargout=0)
+
+    def load_mat_data(self):
+        '''
+        Load data from the .mat file.
+        
+        From matlab, the structure is:
+        
+        save('drl-env.mat', 'time', 'temp_in', 'rh_in', 'co2_in', 'PAR_in', 'fruit_leaf', 'fruit_stem', 'fruit_dw');
+        '''
+        
+        # Read the drl-env mat from the initialization 
+        # Read the 3 values and append it
+        data = sio.loadmat("drl-env.mat")
+        
+        new_time = data['time'].flatten()[-3:]
+        new_co2_in = data['co2_in'].flatten()[-3:]
+        new_temp_in = data['temp_in'].flatten()[-3:]
+        new_rh_in = data['rh_in'].flatten()[-3:]
+        new_PAR_in = data['PAR_in'].flatten()[-3:]
+        new_fruit_leaf = data['fruit_leaf'].flatten()[-3:]
+        new_fruit_stem = data['fruit_stem'].flatten()[-3:]
+        new_fruit_dw = data['fruit_dw'].flatten()[-3:]
+
+        if not hasattr(self, 'time'):
+            self.time = new_time
+            self.co2_in = new_co2_in
+            self.temp_in = new_temp_in
+            self.rh_in = new_rh_in
+            self.PAR_in = new_PAR_in
+            self.fruit_leaf = new_fruit_leaf
+            self.fruit_stem = new_fruit_stem
+            self.fruit_dw = new_fruit_dw
+        else:
+            self.time = np.concatenate((self.time, new_time))
+            self.co2_in = np.concatenate((self.co2_in, new_co2_in))
+            self.temp_in = np.concatenate((self.temp_in, new_temp_in))
+            self.rh_in = np.concatenate((self.rh_in, new_rh_in))
+            self.PAR_in = np.concatenate((self.PAR_in, new_PAR_in))
+            self.fruit_leaf = np.concatenate((self.fruit_leaf, new_fruit_leaf))
+            self.fruit_stem = np.concatenate((self.fruit_stem, new_fruit_stem))
+            self.fruit_dw = np.concatenate((self.fruit_dw, new_fruit_dw))
+
     def reset(self, *, seed=None, options=None):
         '''
         Reset the environment to the initial state.
@@ -318,51 +326,72 @@ class MiniGreenhouse(gym.Env):
         Returns:
         int: The initial observation of the environment.
         '''
-        self.current_step = 1  
-        # self.load_mat_data()  # Ensure data is loaded at reset
-        self.state = self.observation()
-        # print(f"Environment reset. Initial state: {self.state}")
-        return self.state, {}
+        self.current_step = 0
+        
+        #self.load_mat_data()
+        return self.observation(), {}
 
     def observation(self):
-        '''
-        Get the current observation of the environment.
         
-        Returns:
-        float: The index representing the states
-        '''
-        obs = np.array([
-            self.co2_in[-1],  # Latest value
-            self.temp_in[-1],  # Latest value
-            self.rh_in[-1],  # Latest value
-            self.PAR_in[-1],  # Latest value
-            self.fruit_leaf[-1],  # Latest value
-            self.fruit_stem[-1],  # Latest value
-            self.fruit_dw[-1]  # Latest value
-        ], dtype=np.float32)
-        
-        clipped_obs = np.clip(obs, self.observation_space.low, self.observation_space.high)
-        #print(f"Observation at step {self.current_step}: {clipped_obs}")
-        return clipped_obs
+        return np.array([
+            self.co2_in[-1], 
+            self.temp_in[-1], 
+            self.rh_in[-1], 
+            self.PAR_in[-1], 
+            self.fruit_leaf[-1], 
+            self.fruit_stem[-1], 
+            self.fruit_dw[-1]
+        ], np.float32)
+       
 
-    def reward(self):
+    def get_reward(self, _ventilation, _toplights, _heater):
         '''
         Get the reward for the current state.
         
+        The reward function defines the immediate reward obtained by the agent for its actions in a given state. 
+        Changed based on the MiniGreenhouse environment. 
+        
+        Source: Bridging the reality gap: An Adaptive Framework for Autonomous Greenhouse 
+        Control with Deep Reinforcement Learning. George Qi. Wageningen University. 2024.
+        
+        r(k) = w_r,y1 * Δy1(k) - Σ (from i=1 to 3) w_r,ai * ai(k) 
+        
+        Details 
+        r(k): the imediate reward the agent receives at time step k.
+        w_r,y1 * Δy1(k): represents the positive reward for the agent due to increased in the fruit dry weight Δy1(k).
+        Σ (from i=1 to 3) w_r,ai * ai(k): represents the negative reward received by the agent due to cost energy with arbitrary 
+    
         Returns:
-        float: The reward based on the change in fruit dry weight.
+        int: the immediate reward the agent receives at time step k in integer.
         '''
         
         if self.current_step == 0:
-            return 0.0 # No reward for the initial state
+            return 0.0 # No reward for the initial state 
         
-        delta_fruit_dw = self.fruit_dw[self.current_step] - self.fruit_dw[self.current_step - 1]
+        # In the createCropModel.m in the GreenLight model (mini-greenhouse-model)
+        # cFruit or dry weight of fruit is the carbohydrates in fruit, so it is the best variable to count for the reward
+        # Calculate the change in fruit dry weight
+        delta_fruit_dw = (self.fruit_dw[-1] - self.fruit_dw[-2])
         print("delta_fruit_dw: ", delta_fruit_dw)
-        if delta_fruit_dw > 0:
-            return delta_fruit_dw
-        else:
-            return 0.0
-
+        
+        return delta_fruit_dw
+        
+    def delete_files(self):
+        '''
+        delete file after simulation.
+        
+        Returns:
+        
+        '''
+        os.remove('controls.mat') # controls file
+        os.remove('drl-env.mat')  # simulation file
+        os.remove('indoor.mat')   # indoor measurements
+        os.remove('fruit.mat')    # fruit growth
+        # os.remove('outdoor.mat')  # outdoor measurements
+        if self.online_measurements == True:
+            os.remove('outdoor.mat')  # outdoor measurements
+        
+        
     def done(self):
         '''
         Check if the episode is done.
@@ -371,13 +400,30 @@ class MiniGreenhouse(gym.Env):
         bool: True if the episode is done, otherwise False.
         '''
         
-        # Episode is done if we have reached the maximum number of steps
-        if self.current_step >= self.max_steps:
-            self.print_all_data()
-            return True
+        # Episode is done if we have reached the target
+        # We print all the physical parameters and controls
+
+        if self.flag_run == True:
+            # Terminated when current step is same value with max_steps 
+            # In one episode, for example if the max_step = 4, that mean 1 episode is for 1 hour in real-time (real-measurements)
+            if self.current_step >= self.max_steps:
+                
+                # Print and save all data
+                self.print_and_save_all_data()
+                
+                # Delete all files
+                self.delete_files()
+                
+                return True
+        else:
+            if self.current_step >= self.max_steps:
+                # Delete all files
+                # self.delete_files()
+                return True
+            
         return False
 
-    def step(self, action):
+    def step(self, _action):
         '''
         Take an action in the environment.
         
@@ -390,49 +436,54 @@ class MiniGreenhouse(gym.Env):
         -  u2(t) Toplighting status (-)        0/1 (1 is on)
         -  u3(t) Heating (-)                   0/1 (1 is on)
 
-        Returns: 
-        tuple: A tuple containing the new observation, reward, done flag, and additional info.
+        Returns:
+            New observation, reward, terminated-flag (frome done method), truncated-flag, info-dict (empty).
         '''
+        print("ACTION: ", _action)
         
         # Convert actions to discrete values
-        fan = 1 if action[0] >= 0.5 else 0
-        toplighting = 1 if action[1] >= 0.5 else 0
-        heating = 1 if action[2] >= 0.5 else 0
+        ventilation = 1 if _action[0] >= 0.5 else 0
+        toplights = 1 if _action[1] >= 0.5 else 0
+        heater = 1 if _action[2] >= 0.5 else 0
         
-        time_steps = np.linspace(300, 1200, 4) 
-        ventilation = np.full(4, fan)
-        lamps = np.full(4, toplighting)
-        heater = np.full(4, heating)
-        
-        # Ensure all arrays have the same length
-        assert len(time_steps) == len(ventilation) == len(lamps) == len(heater), "Array lengths are not consistent"
+        print("CONVERTED ACTION")
+        print("ventilation: ", ventilation)
+        print("toplights: ", toplights)
+        print("heating: ", heater)
 
-        # Append controls to the lists twice
-        # self.ventilation_list.extend(ventilation)
-        # self.lamps_list.extend(lamps)
-        # self.heater_list.extend(heater)
-        
+        time_steps = np.linspace(300, 1200, 4)
+        ventilation = np.full(4, ventilation)
+        toplights = np.full(4, toplights)
+        heater = np.full(4, heater)
+
         # Keep only the latest 3 data points before appending
-        latest_ventilation = ventilation[-3:].tolist()
-        latest_lamps = lamps[-3:].tolist()
-        latest_heater = heater[-3:].tolist()
-
         # Append controls to the lists
-        self.ventilation_list.extend(latest_ventilation)
-        self.lamps_list.extend(latest_lamps)
-        self.heater_list.extend(latest_heater)
+        self.ventilation_list.extend(ventilation[-3:])
+        self.toplights_list.extend(toplights[-3:])
+        self.heater_list.extend(heater[-3:])
+        
+        # time_steps_seconds = np.linspace(300, 1200, 3)  # Time steps in seconds
+        
+        # Only publish MQTT data for the Raspberry Pi when running not training
+        if self.online_measurements == True:
+            # Format data controls in JSON format
+            json_data = self.service_functions.format_data_in_JSON(time_steps, \
+                                                ventilation, toplights, \
+                                                heater)
+            
+            # Publish controls to the raspberry pi (IoT system client)
+            self.service_functions.publish_mqtt_data(json_data)
 
         # Create control dictionary
         controls = {
             'time': time_steps.reshape(-1, 1),
             'ventilation': ventilation.reshape(-1, 1),
-            'lamps': lamps.reshape(-1, 1),
+            'toplights': toplights.reshape(-1, 1),
             'heater': heater.reshape(-1, 1)
         }
         
         # Save control variables to .mat file
-        controls_file = 'controls.mat'
-        sio.savemat(controls_file, controls)
+        sio.savemat('controls.mat', controls)
         
         # Increment the current step
         self.current_step += 1
@@ -442,30 +493,27 @@ class MiniGreenhouse(gym.Env):
         print("CURRENT STEPS: ", self.current_step)
 
         # Update the season_length and first_day
-        self.season_length = 1 / 72
-        self.first_day += 1 / 72
-        
+        self.season_length = 1 / 72 #* 3 / 4
+        self.first_day += 1 / 72 #* 3 / 4
+
         # Convert co2_in ppm
-        # co2ppm_to_dens Convert CO2 molar concetration [ppm] to density [kg m^{-3}]
         co2_density = self.service_functions.co2ppm_to_dens(self.temp_in[-3:], self.co2_in[-3:])
         
         # Convert Relative Humidity (RH) to Pressure in Pa
         vapor_density = self.service_functions.rh_to_vapor_density(self.temp_in[-3:], self.rh_in[-3:])
         vapor_pressure = self.service_functions.vapor_density_to_pressure(self.temp_in[-3:], vapor_density)
-        
+
         # Update the MATLAB environment with the 3 latest current state
         drl_indoor = {
             'time': self.time[-3:].astype(float).reshape(-1, 1),
             'temp_in': self.temp_in[-3:].astype(float).reshape(-1, 1),
-            # 'rh_in': self.rh_in[-3:].astype(float).reshape(-1, 1),
             'rh_in': vapor_pressure.reshape(-1, 1),
             'co2_in': co2_density.reshape(-1, 1)
         }
         
         # Save control variables to .mat file
-        indoor_file = 'indoor.mat'
-        sio.savemat(indoor_file, drl_indoor)
-        
+        sio.savemat('indoor.mat', drl_indoor)
+
         # Update the fruit growth with the 1 latest current state
         fruit_growth = {
             'time': self.time[-1:].astype(float).reshape(-1, 1),
@@ -475,28 +523,31 @@ class MiniGreenhouse(gym.Env):
         }
         
         # Save the fruit growth to .mat file
-        fruit_file = 'fruit.mat'
-        sio.savemat(fruit_file, fruit_growth)
+        sio.savemat('fruit.mat', fruit_growth)
         
-        self.run_matlab_script(indoor_file, fruit_file)
+        if self.online_measurements == True:
+            # Get the outdoor measurements
+            self.service_functions.get_outdoor_measurements()
 
+        # Run the scrip with the updated state variables
+        if self.online_measurements == True:
+            self.run_matlab_script('outdoor.mat', 'indoor.mat', 'fruit.mat')
+        else:
+            self.run_matlab_script(None, 'indoor.mat', 'fruit.mat')
+        
         # Load the updated data from the .mat file
         self.load_mat_data()
-
-        self.state = self.observation()
         
         # Calculate reward
-        reward = self.reward()
+        _reward = self.get_reward(ventilation, toplights, heater)
         
         # Record the reward
-        self.rewards_list.extend([reward] * 3)
-        
-        # Check if done
-        done = self.done()
-        
+        self.rewards_list.extend([_reward] * 3)
+
+        # Truncated flag
         truncated = False
-        
-        return self.state, reward, done, truncated, {}
+    
+        return self.observation(), _reward, self.done(), truncated, {}
 
     # Ensure to properly close the MATLAB engine when the environment is no longer used
     def __del__(self):

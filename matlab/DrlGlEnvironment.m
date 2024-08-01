@@ -23,7 +23,7 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
 
     % Load DRL controls from the .mat file
     controls = load(controlsFile);
-    controls_drl = [controls.time, controls.ventilation, controls.lamps, controls.heater];
+    controls_drl = [controls.time, controls.ventilation, controls.toplights, controls.heater];
 
     % Ensure that the arrays are of the same length
     if size(controls_drl, 1) ~= size(controls_iot, 1)
