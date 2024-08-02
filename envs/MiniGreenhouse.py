@@ -106,7 +106,7 @@ class MiniGreenhouse(gym.Env):
 
         # Path to MATLAB script
         # Change path based on your directory!
-        self.matlab_script_path = r'C:\Users\frm19\OneDrive - Wageningen University & Research\2. Thesis - Information Technology\3. Software Projects\drl-mini-greenhouse\matlab\DrlGlEnvironment.m'
+        self.matlab_script_path = r'C:\Users\frm19\OneDrive - Wageningen University & Research\2. Thesis - Information Technology\3. Software Projects\drl-mini-greenhouse\matlab\DrlGlEnvironment2.m'
 
         # Initialize lists to store control values
         self.ventilation_list = []
@@ -121,7 +121,7 @@ class MiniGreenhouse(gym.Env):
         # self.reward = 1
         
         # Record the reward for the first time
-        self.rewards_list.extend([reward] * 3)
+        self.rewards_list.extend([reward] * 4)
 
         # Initialize ServiceFunctions
         self.service_functions = ServiceFunctions()
@@ -225,8 +225,11 @@ class MiniGreenhouse(gym.Env):
         
         # time_max = (self.max_steps + 1) * 900 # for e.g. 4 steps * 900 (15 minutes) = 60 minutes
         # time_steps_seconds = np.linspace(300, time_max, (self.max_steps + 1) * 3)  # Time steps in seconds
-        time_max = (self.max_steps + 1) * 900 # for e.g. 4 steps * 900 (15 minutes) = 60 minutes
-        time_steps_seconds = np.linspace(300, time_max, (self.max_steps + 1)  * 3)  # Time steps in seconds
+        
+        # TO DO: We need to change it become 1200s -> so it can be 20 minutes
+        # time_max = (self.max_steps + 1) * 900 # for e.g. 4 steps * 900 (15 minutes) = 60 minutes
+        time_max = (self.max_steps + 1) * 1200 # for e.g. 4 steps * 900 (15 minutes) = 60 minutes
+        time_steps_seconds = np.linspace(300, time_max, (self.max_steps + 1)  * 4)  # Time steps in seconds
         time_steps_hours = time_steps_seconds / 3600  # Convert seconds to hours
         time_steps_formatted = [str(timedelta(hours=h))[:-3] for h in time_steps_hours]  # Format to HH:MM
         print("time_steps_plot (in HH:MM format):", time_steps_formatted)
@@ -248,6 +251,7 @@ class MiniGreenhouse(gym.Env):
         Initialize control variables.
         '''
         
+        # Initialize for the first time 
         time_steps = np.linspace(300, 1200, 4) # 15 minutes (900 seconds)
         self.controls = {
             'time': time_steps.reshape(-1, 1),
@@ -257,9 +261,9 @@ class MiniGreenhouse(gym.Env):
         }
         
         # Append only the latest 3 values from each control variable 
-        self.ventilation_list.extend(self.controls['ventilation'].flatten()[-3:])
-        self.toplights_list.extend(self.controls['toplights'].flatten()[-3:])
-        self.heater_list.extend(self.controls['heater'].flatten()[-3:])
+        self.ventilation_list.extend(self.controls['ventilation'].flatten()[-4:])
+        self.toplights_list.extend(self.controls['toplights'].flatten()[-4:])
+        self.heater_list.extend(self.controls['heater'].flatten()[-4:])
         sio.savemat('controls.mat', self.controls)
         
     def run_matlab_script(self, outdoor_file = None, indoor_file=None, fruit_file=None):
@@ -276,7 +280,8 @@ class MiniGreenhouse(gym.Env):
         if outdoor_file is None:
             outdoor_file = []
 
-        self.eng.DrlGlEnvironment(self.season_length, self.first_day, 'controls.mat', outdoor_file, indoor_file, fruit_file, nargout=0)
+        # self.eng.DrlGlEnvironment2(self.season_length, self.first_day, outdoor_file, indoor_file, fruit_file, nargout=0)
+        self.eng.DrlGlEnvironment2(self.season_length, self.first_day, [], indoor_file, fruit_file, nargout=0)
 
     def load_mat_data(self):
         '''
@@ -291,14 +296,17 @@ class MiniGreenhouse(gym.Env):
         # Read the 3 values and append it
         data = sio.loadmat("drl-env.mat")
         
-        new_time = data['time'].flatten()[-3:]
-        new_co2_in = data['co2_in'].flatten()[-3:]
-        new_temp_in = data['temp_in'].flatten()[-3:]
-        new_rh_in = data['rh_in'].flatten()[-3:]
-        new_PAR_in = data['PAR_in'].flatten()[-3:]
-        new_fruit_leaf = data['fruit_leaf'].flatten()[-3:]
-        new_fruit_stem = data['fruit_stem'].flatten()[-3:]
-        new_fruit_dw = data['fruit_dw'].flatten()[-3:]
+        new_time = data['time'].flatten()[-4:]
+        new_co2_in = data['co2_in'].flatten()[-4:]
+        new_temp_in = data['temp_in'].flatten()[-4:]
+        new_rh_in = data['rh_in'].flatten()[-4:]
+        new_PAR_in = data['PAR_in'].flatten()[-4:]
+        new_fruit_leaf = data['fruit_leaf'].flatten()[-4:]
+        new_fruit_stem = data['fruit_stem'].flatten()[-4:]
+        new_fruit_dw = data['fruit_dw'].flatten()[-4:]
+        
+        print("##")
+        print("NEW FRUIT DW DEBUG", new_fruit_dw)
 
         if not hasattr(self, 'time'):
             self.time = new_time
@@ -470,6 +478,8 @@ class MiniGreenhouse(gym.Env):
         print("toplights: ", toplights)
         print("heating: ", heater)
 
+        # TO-DO: Refactor this so the time_steps is not reset from beginning but increment it
+        
         time_steps = np.linspace(300, 1200, 4)
         ventilation = np.full(4, ventilation)
         toplights = np.full(4, toplights)
@@ -477,9 +487,9 @@ class MiniGreenhouse(gym.Env):
 
         # Keep only the latest 3 data points before appending
         # Append controls to the lists
-        self.ventilation_list.extend(ventilation[-3:])
-        self.toplights_list.extend(toplights[-3:])
-        self.heater_list.extend(heater[-3:])
+        self.ventilation_list.extend(ventilation[-4:])
+        self.toplights_list.extend(toplights[-4:])
+        self.heater_list.extend(heater[-4:])
         
         # time_steps_seconds = np.linspace(300, 1200, 3)  # Time steps in seconds
         
@@ -516,24 +526,29 @@ class MiniGreenhouse(gym.Env):
         self.first_day += 1 / 72 #* 3 / 4
 
         # Convert co2_in ppm
-        co2_density = self.service_functions.co2ppm_to_dens(self.temp_in[-3:], self.co2_in[-3:])
+        co2_density = self.service_functions.co2ppm_to_dens(self.temp_in[-4:], self.co2_in[-4:])
         
         # Convert Relative Humidity (RH) to Pressure in Pa
-        vapor_density = self.service_functions.rh_to_vapor_density(self.temp_in[-3:], self.rh_in[-3:])
-        vapor_pressure = self.service_functions.vapor_density_to_pressure(self.temp_in[-3:], vapor_density)
+        vapor_density = self.service_functions.rh_to_vapor_density(self.temp_in[-4:], self.rh_in[-4:])
+        vapor_pressure = self.service_functions.vapor_density_to_pressure(self.temp_in[-4:], vapor_density)
 
         # Update the MATLAB environment with the 3 latest current state
         drl_indoor = {
             'time': self.time[-3:].astype(float).reshape(-1, 1),
             'temp_in': self.temp_in[-3:].astype(float).reshape(-1, 1),
-            'rh_in': vapor_pressure.reshape(-1, 1),
-            'co2_in': co2_density.reshape(-1, 1)
+            'rh_in': vapor_pressure[-3:].astype(float).reshape(-1, 1),
+            'co2_in': co2_density[-3:].astype(float).reshape(-1, 1)
         }
         
         # Save control variables to .mat file
         sio.savemat('indoor.mat', drl_indoor)
 
         # Update the fruit growth with the 1 latest current state
+        
+        # print("DEBUGGING!")
+        # print("time[-1:]", self.time[-1:].astype(float).reshape(-1, 1))
+        # print("time: ", self.time[:].astype(float).reshape(-1, 1))
+        
         fruit_growth = {
             'time': self.time[-1:].astype(float).reshape(-1, 1),
             'fruit_leaf': self.fruit_leaf[-1:].astype(float).reshape(-1, 1),
@@ -562,7 +577,7 @@ class MiniGreenhouse(gym.Env):
         _reward = self.get_reward(ventilation[0], toplights[0], heater[0])
         
         # Record the reward
-        self.rewards_list.extend([_reward] * 3)
+        self.rewards_list.extend([_reward] * 4)
 
         # Truncated flag
         truncated = False

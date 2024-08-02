@@ -227,6 +227,10 @@ class ServiceFunctions:
         - heater: List of heater control values
         - rewards: List of rewards values
         '''
+        
+        # Print the lengths of each list
+        print(f"Lengths -> time: {len(time)}, co2_in: {len(co2_in)}, temp_in: {len(temp_in)}, rh_in: {len(rh_in)}, PAR_in: {len(PAR_in)}, fruit_leaf: {len(fruit_leaf)}, fruit_stem: {len(fruit_stem)}, fruit_dw: {len(fruit_dw)}, ventilation: {len(ventilation)}, toplights: {len(toplights)}, heater: {len(heater)}, rewards: {len(rewards)}")
+        
         data = {
             'Time': time,
             'CO2 In': co2_in,
@@ -237,14 +241,20 @@ class ServiceFunctions:
             'Fruit stem': fruit_stem,
             'Fruit Dry Weight': fruit_dw,
             'Ventilation': ventilation,
-            'toplights': toplights,
+            'Toplights': toplights,
             'Heater': heater,
             'Rewards': rewards
         }
         
+        # Check if all lists have the same length
+        lengths = [len(v) for v in data.values()]
+        if len(set(lengths)) != 1:
+            raise ValueError("All arrays must be of the same length")
+        
         df = pd.DataFrame(data)
         df.to_excel(filename, index=False)
         print(f"Data successfully exported to {filename}")
+
         
     def format_data_in_JSON(self, time, ventilation, toplights, heater):
         '''
