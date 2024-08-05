@@ -3,77 +3,59 @@
 from ray.rllib.algorithms.ppo import PPOConfig
 
 # Import the custom environment
-from envs.MiniGreenhouse2 import MiniGreenhouse2
+from envs.MiniGreenhouse import MiniGreenhouse
 
 # Import support libraries
-import math
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import os
 
-# Use PPOConfig to configure and build the PPO algorithm
-config = (
-    PPOConfig()
-    .environment(
-        env=MiniGreenhouse2,
+# Configure the RLlib PPO algorithm
+config = PPOConfig()
+config.rollouts(num_rollout_workers=1)
+config.resources(num_cpus_per_worker=1)
+config.environment(
+    env=MiniGreenhouse,
         env_config={
             "flag_run": False,
             "first_day": 1,
             "season_length": 1/72,
             "max_steps": 4
         })
-    #.env_runners(num_envs_per_env_runner=2)
-    .training(train_batch_size=2, sgd_minibatch_size=1)
+
+config.training(
+    gamma=0.9,  # Discount factor
+        lr=0.0001, #lr = 0.1,  # Learning rate
+        kl_coeff=0.3,  # KL divergence coefficient
+        # model={
+        #     "fcnet_hiddens": [256, 256, 256],  # Hidden layer configuration
+        #     "fcnet_activation": "relu",  # Activation function
+        #     "use_lstm": True,  # Whether to use LSTM
+        #     "max_seq_len": 48,  # Maximum sequence length
+        # }, 
+        train_batch_size=2, 
+        sgd_minibatch_size=1
 )
 
-# Build.
+# Build the algorithm object
 algo = config.build()
 
-# Initialize lists to store reward values
-avg_rewards_list = []
-
-# Give initial values for reward
-sum_rewards = 0
-
-# Train the model for a number of iterations
-# 1 iteration mean 1 hour because 1 iteration has 4 time-steps that equal to 1 hour in real-time
-iterations = 40
-
-for i in tqdm(range(iterations)):
-    results = algo.train()
-    
-    reward = results['env_runners']['episode_return_mean']
-    
-    # Print the rewards
-    print(f"Iter: {i}; avg. rewards={reward}")
-    
-    if math.isnan(reward):
-        reward = 0
-        sum_rewards += reward
-        avg_rewards_list.append(sum_rewards)
-    else:
-        sum_rewards += reward
-        avg_rewards_list.append(sum_rewards)
-    
-print(f"Average rewards for {iterations} iterations : ", avg_rewards_list)
-    
+# Train the algorithm
+for episode in tqdm(range(250)):  # Train for 250 episodes
+    result = algo.train()  # Perform training
+    # if episode % 5 == 0:  # Save a checkpoint every 5 episodes
+    #     checkpoint_dir = algo.save().checkpoint.path
+    #     print(f"Checkpoint saved in directory {checkpoint_dir}")
+        
 # Save the model checkpoint
-save_result = algo.save('model/model-minigreenhouse-4')
+save_result = algo.save('model/model-minigreenhouse-config-3')
 
 path_to_checkpoint = save_result
 print(
     "An Algorithm checkpoint has been created inside directory: "
     f"'{path_to_checkpoint}'."
 )
-
-# Plotting the results
-plt.plot(range(iterations), avg_rewards_list, marker='o')
-plt.xlabel('Iterations [-]')
-plt.ylabel('Sum of Rewards [-]')
-plt.title('Sum of Rewards over Iterations')
-plt.grid(True)
-plt.show()
-
+    
 # Remove unnecessary variables
 os.remove('controls.mat') # controls file
 os.remove('drl-env.mat')  # simulation file
