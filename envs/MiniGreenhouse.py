@@ -128,15 +128,20 @@ class MiniGreenhouse(gym.Env):
         # Check if MATLAB script exists
         if os.path.isfile(self.matlab_script_path):
             
-            if self.online_measurements == True:
-                # Initialize outdoor measurements, to get the outdoor measurements
-                self.service_functions.get_outdoor_measurements()
-            
             # Initialize control variables to zero 
             self.init_controls()
             
-            # Call the MATLAB function without the parameter
-            self.run_matlab_script()
+            # Call the MATLAB function 
+            if self.online_measurements == True:
+                # Initialize outdoor measurements, to get the outdoor measurements
+                self.service_functions.get_outdoor_measurements()
+                
+                # Run the script with the updated outdoor measurements for the first time
+                self.run_matlab_script('outdoor.mat', None, None)
+            else:
+                # Run the script with empty parameter
+                self.run_matlab_script()
+        
         else:
             print(f"MATLAB script not found: {self.matlab_script_path}")
 
@@ -182,7 +187,7 @@ class MiniGreenhouse(gym.Env):
             dtype=np.float32
         )
 
-    def print_and_save_all_data(self):
+    def print_and_save_all_data(self, _file_name):
         '''
         Print all the appended data.
         '''
@@ -229,7 +234,7 @@ class MiniGreenhouse(gym.Env):
         print("time_steps_plot (in HH:MM format):", time_steps_formatted)
         
         # Save all the data in an excel file
-        self.service_functions.export_to_excel('output/output_simulated_data-2.xlsx', time_steps_formatted, self.co2_in, self.temp_in, self.rh_in, \
+        self.service_functions.export_to_excel(_file_name, time_steps_formatted, self.co2_in, self.temp_in, self.rh_in, \
                                             self.PAR_in, self.fruit_leaf, self.fruit_stem, \
                                             self.fruit_dw, self.ventilation_list, self.toplights_list, \
                                             self.heater_list, self.rewards_list)
@@ -329,6 +334,12 @@ class MiniGreenhouse(gym.Env):
         return self.observation(), {}
 
     def observation(self):
+        '''
+        Get the observation of the environment for every state.
+        
+        Returns:
+        array: The observation space of the environment.
+        '''
         
         return np.array([
             self.co2_in[-1], 
@@ -394,10 +405,7 @@ class MiniGreenhouse(gym.Env):
         
     def delete_files(self):
         '''
-        delete file after simulation.
-        
-        Returns:
-        
+        delete matlab files after simulation to make it clear.    
         '''
         os.remove('controls.mat') # controls file
         os.remove('drl-env.mat')  # simulation file
@@ -425,7 +433,10 @@ class MiniGreenhouse(gym.Env):
             if self.current_step >= self.max_steps:
                 
                 # Print and save all data
-                self.print_and_save_all_data()
+                if self.online_measurements == True:
+                    self.print_and_save_all_data('output/output_simulated_data_online.xlsx')
+                else:
+                    self.print_and_save_all_data('output/output_simulated_data_offline.xlsx')
                 
                 # Delete all files
                 self.delete_files()
@@ -548,7 +559,7 @@ class MiniGreenhouse(gym.Env):
             # Get the outdoor measurements
             self.service_functions.get_outdoor_measurements()
 
-        # Run the scrip with the updated state variables
+        # Run the script with the updated state variables
         if self.online_measurements == True:
             self.run_matlab_script('outdoor.mat', 'indoor.mat', 'fruit.mat')
         else:

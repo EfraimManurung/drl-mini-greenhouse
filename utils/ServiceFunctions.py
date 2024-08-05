@@ -6,7 +6,6 @@ MSc Thesis in Information Technology Group, Wageningen University
 
 efraim.efraimpartoginahotasi@wur.nl
 efraim.manurung@gmail.com
-
 '''
 
 import numpy as np
@@ -142,7 +141,7 @@ class ServiceFunctions:
     
     def plot_all_data(self, _data, time, co2_in, temp_in, rh_in, PAR_in, fruit_leaf, fruit_stem, fruit_dw, ventilation, toplights, heater, rewards):
         '''
-        Plot all the appended data.
+        Plot all the paremeters to make it easier to see.
         
         Parameters:
         - time: List of time values
@@ -283,7 +282,9 @@ class ServiceFunctions:
         }
 
         json_data = json.dumps(data, indent=4)
-        print("JSON DATA: ", json_data)
+        
+        # For debugging JSON data
+        # print("JSON DATA: ", json_data)
         return json_data
     
     def publish_mqtt_data(self, json_data, broker="192.168.1.131", port=1883, topic="greenhouse-iot-system/drl-controls"):
@@ -324,7 +325,7 @@ class ServiceFunctions:
             client.subscribe(topic)
             
         def on_message(client, userdata, msg):
-            print(msg.topic + " " + str(msg.payload.decode()))
+            # print(msg.topic + " " + str(msg.payload.decode()))
             # Parse the JSON data
             data = json.loads(msg.payload.decode())
             
@@ -353,7 +354,7 @@ class ServiceFunctions:
 
     def process_received_data(self, data):
         '''
-        Process the outdoor measurements.
+        Process the outdoor measurements and .
         
         Outdoor measurements:
         - time: from main loop iteration in 1 s

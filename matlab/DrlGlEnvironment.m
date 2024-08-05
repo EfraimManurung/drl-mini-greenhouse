@@ -37,7 +37,7 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
     
     % Check if the outdoofile empty or not
     if isempty(outdoorFile)
-        disp('Using offline dataset.');
+        disp('USED OFFLINE DATASET.');
     % Try to load outdoor measurements from the .mat file
     else
             %Load outdoor measurements from the .mat file
@@ -65,7 +65,7 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
             outdoor_iot(:,5) = co2ppm2dens(double(outdoor_iot(:,3)), double(outdoor_drl(:,5))); %co2 [kg{CO2} m^{-3}{air}] outdoor CO2 concentration
 
             % Print the variables
-            disp("OUTDOOR MEASUREMENTS FROM RASPBERRY PI (IOT SYSTEM)")
+            disp("USED ONLINE DATASET.")
             disp('Radiation [W m^{-2}]:');
             disp(outdoor_iot(:,2));
             
