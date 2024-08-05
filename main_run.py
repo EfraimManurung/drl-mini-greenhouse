@@ -24,7 +24,6 @@ from envs.MiniGreenhouse import MiniGreenhouse
 # that has the exact same state as the old one, from which the checkpoint was
 # created in the first place:
 
-# my_new_ppo = Algorithm.from_checkpoint('model/model-minigreenhouse-5')
 my_new_ppo = Algorithm.from_checkpoint('model/model-minigreenhouse-config-2')
 
 # Call the MiniGreenhouse instance
@@ -32,7 +31,7 @@ env = MiniGreenhouse({"flag_run": True,
                         "first_day": 1,
                         "season_length": 1/72,
                         "online_measurements": False,
-                        "max_steps": 72 #96 #12 #8 * 12
+                        "max_steps": 6 
                         })
 
 # Get the initial observation (should be: [0.0] for the starting position).
@@ -48,7 +47,6 @@ while not terminated and not truncated:
     # Compute a single action, given the current observation
     # from the environment.
     action = my_new_ppo.compute_single_action(obs)
-    #print("ACTION: ", action)
     
     # Apply the computed action in the environment.
     obs, reward, terminated, _, info = env.step(action)

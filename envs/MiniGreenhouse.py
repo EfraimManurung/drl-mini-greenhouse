@@ -12,7 +12,7 @@ By default, strings will be interpreted as a gym environment name.
 Custom env classes passed directly to the algorithm must take asingle env_config parameters
 in their constructor.
 
-Components of an environment:
+Important components of an environment:
 - Observation space
 - Action space
 - Rewards
@@ -23,11 +23,11 @@ In Python we will need to implement, at least:
 - step()
 
 In practice, we may also want other methods, such as render() 
-to show the progress or other methods.
+to show the progress or other methods. But this is not necessary for the environment for now.
 
 the MiniGreenhouse class requirements:
 - convert .mat to JSON or CSV as the states (from observation)
-- 
+- can simulate real mini-greenhouse 
 
 Table 1 Meaning of the state x(t), measurement y(t), control signal u(t) and disturbance d(t).
 ----------------------------------------------------------------------------------------------------------------------------------
@@ -71,7 +71,7 @@ class MiniGreenhouse(gym.Env):
     MiniGreenhouse environment, a custom environment based on the GreenLight model
     and real mini-greenhouse.
     
-    Link the Python code to matlab program with related methods.
+    Link the Python code to matlab program with related methods. We can link it with the .mat file.
     '''
     
     def __init__(self, env_config):
@@ -82,7 +82,7 @@ class MiniGreenhouse(gym.Env):
         env_config(dict): Configuration dictionary for the environment.
         '''  
         
-        print("MiniGreenhouse2 Environment Start!!")
+        print("MiniGreenhouse Environment initiated!")
         
         # Initialize if the main program for training or running
         self.flag_run  = env_config.get("flag_run", True) # The simulation is for running (other option is False for training)
@@ -106,7 +106,7 @@ class MiniGreenhouse(gym.Env):
 
         # Path to MATLAB script
         # Change path based on your directory!
-        self.matlab_script_path = r'C:\Users\frm19\OneDrive - Wageningen University & Research\2. Thesis - Information Technology\3. Software Projects\drl-mini-greenhouse\matlab\DrlGlEnvironment2.m'
+        self.matlab_script_path = r'C:\Users\frm19\OneDrive - Wageningen University & Research\2. Thesis - Information Technology\3. Software Projects\drl-mini-greenhouse\matlab\DrlGlEnvironment.m'
 
         # Initialize lists to store control values
         self.ventilation_list = []
@@ -118,7 +118,6 @@ class MiniGreenhouse(gym.Env):
         
         # Initialize reward
         reward = 0
-        # self.reward = 1
         
         # Record the reward for the first time
         self.rewards_list.extend([reward] * 4)
@@ -163,12 +162,11 @@ class MiniGreenhouse(gym.Env):
             - fruit_stem
             - fruit_dw
         
-        Lower bound and upper bound for the state x(t) variables
-        Temperature (°C) - Max: 24.53, Min: 22.25
-        Relative Humidity (%) - Max: 66.70, Min: 50.36
-        CO2 Concentration (ppm) - Max: 1933.33, Min: 400.00
-        PAR Inside (W/m^2) - Max: 5.85, Min: 0.00
-        
+        The state x(t) variables:
+        - Temperature (°C) 
+        - Relative Humidity (%) 
+        - CO2 Concentration (ppm) 
+        - PAR Inside (W/m^2) 
         '''
         
         # Define observation and action spaces
@@ -223,12 +221,8 @@ class MiniGreenhouse(gym.Env):
         df = pd.DataFrame(data)
         print(df)
         
-        # time_max = (self.max_steps + 1) * 900 # for e.g. 4 steps * 900 (15 minutes) = 60 minutes
-        # time_steps_seconds = np.linspace(300, time_max, (self.max_steps + 1) * 3)  # Time steps in seconds
-        
-        # TO DO: We need to change it become 1200s -> so it can be 20 minutes
-        # time_max = (self.max_steps + 1) * 900 # for e.g. 4 steps * 900 (15 minutes) = 60 minutes
-        time_max = (self.max_steps + 1) * 1200 # for e.g. 4 steps * 900 (15 minutes) = 60 minutes
+        # Calculate time_steps for plot and save it on the excel file
+        time_max = (self.max_steps + 1) * 1200 # for e.g. 3 steps * 1200 (20 minutes) = 60 minutes
         time_steps_seconds = np.linspace(300, time_max, (self.max_steps + 1)  * 4)  # Time steps in seconds
         time_steps_hours = time_steps_seconds / 3600  # Convert seconds to hours
         time_steps_formatted = [str(timedelta(hours=h))[:-3] for h in time_steps_hours]  # Format to HH:MM
@@ -252,7 +246,7 @@ class MiniGreenhouse(gym.Env):
         '''
         
         # Initialize for the first time 
-        time_steps = np.linspace(300, 1200, 4) # 15 minutes (900 seconds)
+        time_steps = np.linspace(300, 1200, 4) # 20 minutes (1200 seconds)
         self.controls = {
             'time': time_steps.reshape(-1, 1),
             'ventilation': np.zeros(4).reshape(-1, 1),
@@ -280,8 +274,7 @@ class MiniGreenhouse(gym.Env):
         if outdoor_file is None:
             outdoor_file = []
 
-        # self.eng.DrlGlEnvironment2(self.season_length, self.first_day, outdoor_file, indoor_file, fruit_file, nargout=0)
-        self.eng.DrlGlEnvironment2(self.season_length, self.first_day, [], indoor_file, fruit_file, nargout=0)
+        self.eng.DrlGlEnvironment(self.season_length, self.first_day, 'controls.mat', outdoor_file, indoor_file, fruit_file, nargout=0)
 
     def load_mat_data(self):
         '''
@@ -305,9 +298,6 @@ class MiniGreenhouse(gym.Env):
         new_fruit_stem = data['fruit_stem'].flatten()[-4:]
         new_fruit_dw = data['fruit_dw'].flatten()[-4:]
         
-        print("##")
-        print("NEW FRUIT DW DEBUG", new_fruit_dw)
-
         if not hasattr(self, 'time'):
             self.time = new_time
             self.co2_in = new_co2_in
@@ -336,7 +326,6 @@ class MiniGreenhouse(gym.Env):
         '''
         self.current_step = 0
         
-        #self.load_mat_data()
         return self.observation(), {}
 
     def observation(self):
@@ -414,7 +403,7 @@ class MiniGreenhouse(gym.Env):
         os.remove('drl-env.mat')  # simulation file
         os.remove('indoor.mat')   # indoor measurements
         os.remove('fruit.mat')    # fruit growth
-        # os.remove('outdoor.mat')  # outdoor measurements
+
         if self.online_measurements == True:
             os.remove('outdoor.mat')  # outdoor measurements
         
@@ -480,7 +469,7 @@ class MiniGreenhouse(gym.Env):
 
         # TO-DO: Refactor this so the time_steps is not reset from beginning but increment it
         
-        time_steps = np.linspace(300, 1200, 4)
+        time_steps = np.linspace(300, 1200, 4)  # Time steps in seconds
         ventilation = np.full(4, ventilation)
         toplights = np.full(4, toplights)
         heater = np.full(4, heater)
@@ -490,8 +479,6 @@ class MiniGreenhouse(gym.Env):
         self.ventilation_list.extend(ventilation[-4:])
         self.toplights_list.extend(toplights[-4:])
         self.heater_list.extend(heater[-4:])
-        
-        # time_steps_seconds = np.linspace(300, 1200, 3)  # Time steps in seconds
         
         # Only publish MQTT data for the Raspberry Pi when running not training
         if self.online_measurements == True:
@@ -522,8 +509,10 @@ class MiniGreenhouse(gym.Env):
         print("CURRENT STEPS: ", self.current_step)
 
         # Update the season_length and first_day
-        self.season_length = 1 / 72 #* 3 / 4
-        self.first_day += 1 / 72 #* 3 / 4
+        # 1 / 72 is 20 minutes in 24 hours, the calculation look like this
+        # 1 / 72 * 24 [hours] * 60 [minutes . hours ^ -1] = 20 minutes 
+        self.season_length = 1 / 72 
+        self.first_day += 1 / 72 
 
         # Convert co2_in ppm
         co2_density = self.service_functions.co2ppm_to_dens(self.temp_in[-4:], self.co2_in[-4:])
@@ -533,6 +522,7 @@ class MiniGreenhouse(gym.Env):
         vapor_pressure = self.service_functions.vapor_density_to_pressure(self.temp_in[-4:], vapor_density)
 
         # Update the MATLAB environment with the 3 latest current state
+        # It will be used to be simulated in the GreenLight model with mini-greenhouse parameters
         drl_indoor = {
             'time': self.time[-3:].astype(float).reshape(-1, 1),
             'temp_in': self.temp_in[-3:].astype(float).reshape(-1, 1),
@@ -543,12 +533,7 @@ class MiniGreenhouse(gym.Env):
         # Save control variables to .mat file
         sio.savemat('indoor.mat', drl_indoor)
 
-        # Update the fruit growth with the 1 latest current state
-        
-        # print("DEBUGGING!")
-        # print("time[-1:]", self.time[-1:].astype(float).reshape(-1, 1))
-        # print("time: ", self.time[:].astype(float).reshape(-1, 1))
-        
+        # Update the fruit growth with the 1 latest current state from the GreenLight model - mini-greenhouse parameters
         fruit_growth = {
             'time': self.time[-1:].astype(float).reshape(-1, 1),
             'fruit_leaf': self.fruit_leaf[-1:].astype(float).reshape(-1, 1),

@@ -58,17 +58,13 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
             %       weather(:,8)    temperature of external soil layer [°C]
             %       weather(:,9)    daily radiation sum [MJ m^{-2} day^{-1}]
         
-            % CO2_PPM = 400; % assumed constant value of CO2 ppm
-        
             % Change for outdoor measurements
             % outdoor_iot(:,2) = outdoor_iot(:,2);
             outdoor_iot(:,2) = outdoor_drl(:,2) * 0.0079;   % radiation     [W m^{-2}]  outdoor global irradiation source: https://www.researchgate.net/post/Howto_convert_solar_intensity_in_LUX_to_watt_per_meter_square_for_sunlight#:~:text=The%20LUX%20meter%20is%20used,of%20the%20incident%20solar%20radiation.&text=multiply%20lux%20to%200.0079%20which%20give%20you%20value%20of%20w%2Fm2.
             outdoor_iot(:,3) = outdoor_drl(:,3);            % temperature   [°C]        outdoor air temperature
             outdoor_iot(:,4) = rh2vaporDens(double(outdoor_iot(:,3)), double(outdoor_drl(:,4)));  % Convert relative humidity [%] to vapor density [kg{H2O} m^{-3}]
-            % outdoor(:,5) = co2ppm2dens(outdoor(:,3), CO2_PPM);  % Using constant CO2_PPM for the outdoor
             outdoor_iot(:,5) = co2ppm2dens(double(outdoor_iot(:,3)), double(outdoor_drl(:,5))); %co2 [kg{CO2} m^{-3}{air}] outdoor CO2 concentration
-            % outdoor_iot(:,5) = co2ppm2dens(outdoor_iot(:,3), CO2_PPM);
-        
+
             % Print the variables
             disp("OUTDOOR MEASUREMENTS FROM RASPBERRY PI (IOT SYSTEM)")
             disp('Radiation [W m^{-2}]:');
@@ -104,6 +100,7 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
         %       indoor(:,3)     vapor pressure    [Pa]             indoor vapor concentration
         %       indoor(:,4)     co2 concentration [mg m^{-3}]      indoor vapor concentration%
         
+        % DEBUG for the converted values of vapor and RH
         % Convert vapor density [kg{H2O} m^{-3}] to vapor pressure [Pa]
         % rh2_vapor = rh2vaporDens(drl_indoor(:,2), drl_indoor(:,3));
         % drl_indoor(:,3) = vaporDens2pres(drl_indoor(:,2), rh2_vapor);
@@ -139,16 +136,13 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
     
     %% Create an instance of createGreenLight with the default Vanthoor parameters
     
-    % drl_env = createGreenLightModel(lampType, outdoor_iot, startTime, controls_drl);
     drl_env = createGreenLightModel(lampType, outdoor_iot, startTime, controls_iot, drl_indoor);
 
     % Parameters for mini-greenhouse
     setParamsMiniGreenhouse(drl_env);      % set greenhouse structure
     setMiniGreenhouseLedParams(drl_env);   % set lamp params
     %% Control parameters
-    % Read setGIParams.m about the explanation and default values of the control parameters
-    % setParam(led, 'rhMax', 50);        % upper bound on relative humidity  
-    
+
     % Set initial values for crop
     % start with 3.12 plants/m2, assume they are each 2 g = 6240 mg/m2.
     % Check the setGlinit.m for more information
@@ -161,11 +155,6 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
         % Load DRL controls from the .mat file
         fruit_file = load(fruitFile);
         
-        % Display the fields in fruit_file to verify their names
-        % disp('Fields in fruit_file:');
-        % disp(fieldnames(fruit_file));
-        % disp('Fruit growth: ');
-        % disp(fruit_file);
         % Print the fruit growth data
         disp('Fruit growth: ');
         fprintf('          time: %.2f\n', fruit_file.time);
@@ -198,42 +187,42 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
     % Check that the measured data and the simulations have the same size. 
     % If one of them is bigger, some data points of the longer dataset will be
     % discarded
-    % mesLength = length(v.tAir.val(:,1)); % the length (array size) of the measurement data
-    % simLength = length(drl_env.x.tAir.val(:,1)); % the length (array size) of the simulated data
-    % compareLength = min(mesLength, simLength);
-    % 
-    % % Apply the multiplier to drl_env.a.rhIn values
-    % multiplier_rh = 0.61; %0.85; %0.61; %0.83;
-    % if exist('multiplier_rh', 'var') && ~isempty(multiplier_rh)
-    %     drl_env.a.rhIn.val(:,2) = drl_env.a.rhIn.val(:,2) * multiplier_rh;
-    % end
-    % 
-    % % Add more value for the rParGhLamp
-    % % measured / simulated = 1.473 / 3.755 = 0.392
-    % multiplier_irradiance = 0.39;
-    % if exist('multiplier_irradiance', 'var') && ~isempty(multiplier_irradiance)
-    %     drl_env.a.rParGhLamp.val(:,2) = drl_env.a.rParGhLamp.val(1:compareLength,2) * multiplier_irradiance;
-    % end
-    % 
+    mesLength = length(v.tAir.val(:,1)); % the length (array size) of the measurement data
+    simLength = length(drl_env.x.tAir.val(:,1)); % the length (array size) of the simulated data
+    compareLength = min(mesLength, simLength);
+    
+    % Apply the multiplier to drl_env.a.rhIn values
+    multiplier_rh = 0.61; %0.85; %0.61; %0.83;
+    if exist('multiplier_rh', 'var') && ~isempty(multiplier_rh)
+        drl_env.a.rhIn.val(:,2) = drl_env.a.rhIn.val(:,2) * multiplier_rh;
+    end
+
+    % Add more value for the rParGhLamp
+    % measured / simulated = 1.473 / 3.755 = 0.392
+    multiplier_irradiance = 0.39;
+    if exist('multiplier_irradiance', 'var') && ~isempty(multiplier_irradiance)
+        drl_env.a.rParGhLamp.val(:,2) = drl_env.a.rParGhLamp.val(1:compareLength,2) * multiplier_irradiance;
+    end
+    
     % % Added PAR from sun and lamp
     % sunLampIrradiance = (drl_env.a.rParGhSun.val(1:compareLength,2)+drl_env.a.rParGhLamp.val(1:compareLength,2));
-    % 
-    % % Calculate RRMSE
-    % rrmseTair = (sqrt(mean((drl_env.x.tAir.val(1:compareLength,2)-v.tAir.val(1:compareLength,2)).^2))./mean(v.tAir.val(1:compareLength,2))) * 100;
-    % rrmseRhair = (sqrt(mean((drl_env.a.rhIn.val(1:compareLength,2)-v.rhAir.val(1:compareLength,2)).^2))./mean(v.rhAir.val(1:compareLength,2))) * 100;
-    % rrmseCo2air  = (sqrt(mean((drl_env.x.co2Air.val(1:compareLength,2)-v.co2Air.val(1:compareLength,2)).^2))./mean(v.co2Air.val(1:compareLength,2))) * 100;
+    
+    % Calculate RRMSE
+    % rrmseTair = (sqrt(mean((led.x.tAir.val(1:compareLength,2)-v.tAir.val(1:compareLength,2)).^2))./mean(v.tAir.val(1:compareLength,2))) * 100;
+    % rrmseRhair = (sqrt(mean((led.a.rhIn.val(1:compareLength,2)-v.rhAir.val(1:compareLength,2)).^2))./mean(v.rhAir.val(1:compareLength,2))) * 100;
+    % rrmseCo2air  = (sqrt(mean((led.a.co2InPpm.val(1:compareLength,2)-v.co2Air.val(1:compareLength,2)).^2))./mean(v.co2Air.val(1:compareLength,2))) * 100;
     % rrmseIinside = (sqrt(mean((sunLampIrradiance - v.iInside.val(1:compareLength,2)).^2))./mean(v.iInside.val(1:compareLength,2))) * 100;
-    % 
+     
     % % Calculate RMSE
-    % rmseTair = sqrt(mean((drl_env.x.tAir.val(1:compareLength,2) - v.tAir.val(1:compareLength,2)).^2));
-    % rmseRhair = sqrt(mean((drl_env.a.rhIn.val(1:compareLength,2)-v.rhAir.val(1:compareLength,2)).^2));
-    % rmseCo2air = sqrt(mean((drl_env.x.co2Air.val(1:compareLength,2) - v.co2Air.val(1:compareLength,2)).^2));
+    % rmseTair = sqrt(mean((led.x.tAir.val(1:compareLength,2) - v.tAir.val(1:compareLength,2)).^2));
+    % rmseRhair = sqrt(mean((led.a.rhIn.val(1:compareLength,2)-v.rhAir.val(1:compareLength,2)).^2));
+    % rmseCo2air = sqrt(mean((led.a.co2InPpm.val(1:compareLength,2) - v.co2Air.val(1:compareLength,2)).^2));
     % rmseIinside = sqrt(mean((sunLampIrradiance - v.iInside.val(1:compareLength,2)).^2));
-    % 
+     
     % % Calculate ME 
-    % meTair = mean(drl_env.x.tAir.val(1:compareLength,2) - v.tAir.val(1:compareLength,2));
-    % meRhair = mean(drl_env.a.rhIn.val(1:compareLength,2)- v.rhAir.val(1:compareLength,2));
-    % meCo2air = mean(drl_env.x.co2Air.val(1:compareLength,2) - v.co2Air.val(1:compareLength,2));
+    % meTair = mean(led.x.tAir.val(1:compareLength,2) - v.tAir.val(1:compareLength,2));
+    % meRhair = mean(led.a.rhIn.val(1:compareLength,2)- v.rhAir.val(1:compareLength,2));
+    % meCo2air = mean(led.a.co2InPpm.val(1:compareLength,2) - v.co2Air.val(1:compareLength,2));
     % meIinside = mean(sunLampIrradiance - v.iInside.val(1:compareLength,2));
     
     % Save the output 
@@ -241,14 +230,14 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
     % save DrlGlEnvironment
     
     % Display the multiplier values
-    % fprintf('\n');
-    % if exist('multiplier_rh', 'var') && ~isempty(multiplier_rh)
-    %     fprintf('Multiplier RH: %.2f\n', multiplier_rh);
-    % end
-    % 
-    % if exist('multiplier_irradiance', 'var') && ~isempty(multiplier_irradiance)
-    %     fprintf('Multiplier Irradiance: %.2f\n', multiplier_irradiance);
-    % end
+    fprintf('\n');
+    if exist('multiplier_rh', 'var') && ~isempty(multiplier_rh)
+        fprintf('Multiplier RH: %.2f\n', multiplier_rh);
+    end
+
+    if exist('multiplier_irradiance', 'var') && ~isempty(multiplier_irradiance)
+        fprintf('Multiplier Irradiance: %.2f\n', multiplier_irradiance);
+    end
     
     fprintf('Season Length: %.4f day(s) \n', seasonLength);
     fprintf('Season firstDay: %.4f day(s) \n', firstDay);
