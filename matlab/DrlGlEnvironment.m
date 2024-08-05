@@ -37,7 +37,7 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
     
     % Check if the outdoofile empty or not
     if isempty(outdoorFile)
-        disp('Warning: Unable to load outdoor measurements file. Using default or empty values.');
+        disp('Using offline dataset.');
     % Try to load outdoor measurements from the .mat file
     else
             %Load outdoor measurements from the .mat file
@@ -59,7 +59,6 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
             %       weather(:,9)    daily radiation sum [MJ m^{-2} day^{-1}]
         
             % Change for outdoor measurements
-            % outdoor_iot(:,2) = outdoor_iot(:,2);
             outdoor_iot(:,2) = outdoor_drl(:,2) * 0.0079;   % radiation     [W m^{-2}]  outdoor global irradiation source: https://www.researchgate.net/post/Howto_convert_solar_intensity_in_LUX_to_watt_per_meter_square_for_sunlight#:~:text=The%20LUX%20meter%20is%20used,of%20the%20incident%20solar%20radiation.&text=multiply%20lux%20to%200.0079%20which%20give%20you%20value%20of%20w%2Fm2.
             outdoor_iot(:,3) = outdoor_drl(:,3);            % temperature   [°C]        outdoor air temperature
             outdoor_iot(:,4) = rh2vaporDens(double(outdoor_iot(:,3)), double(outdoor_drl(:,4)));  % Convert relative humidity [%] to vapor density [kg{H2O} m^{-3}]
@@ -109,21 +108,16 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
         % drl_indoor(:,4) = 1e6 * co2ppm2dens(drl_indoor(:,2), drl_indoor(:,4));
         
         % Print the converted RH 
-        % disp('Converted RH concentration (Pa)');
-        % disp(drl_indoor(:,3));
-        % Print the converted RH 
-        disp('Converted RH concentration (Pa):');
-        for i = 1:length(drl_indoor(:,3))
-            fprintf('  %.2f\n', drl_indoor(i,3));
-        end
+        % disp('Converted RH concentration (Pa):');
+        % for i = 1:length(drl_indoor(:,3))
+        %     fprintf('  %.2f\n', drl_indoor(i,3));
+        % end
 
         % Print the converted CO2 concentration
         % disp('Converted CO2 concentration (mg m^{-3}):');
-        % disp(drl_indoor(:,4));
-        disp('Converted CO2 concentration (mg m^{-3}):');
-        for i = 1:length(drl_indoor(:,4))
-            fprintf('  %.2f\n', drl_indoor(i,4));
-        end
+        % for i = 1:length(drl_indoor(:,4))
+        %     fprintf('  %.2f\n', drl_indoor(i,4));
+        % end
 
     end
 
@@ -158,8 +152,8 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
         % Print the fruit growth data
         disp('Fruit growth: ');
         fprintf('          time: %.2f\n', fruit_file.time);
-        fprintf('    fruit_leaf: %.2f\n', fruit_file.fruit_leaf);
-        fprintf('    fruit_stem: %.2f\n', fruit_file.fruit_stem);
+        % fprintf('    fruit_leaf: %.2f\n', fruit_file.fruit_leaf);
+        % fprintf('    fruit_stem: %.2f\n', fruit_file.fruit_stem);
         fprintf('      fruit_dw: %.2f\n', fruit_file.fruit_dw);
         
         % Ensure that the required fields exist in fruit_file
@@ -187,22 +181,22 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
     % Check that the measured data and the simulations have the same size. 
     % If one of them is bigger, some data points of the longer dataset will be
     % discarded
-    mesLength = length(v.tAir.val(:,1)); % the length (array size) of the measurement data
-    simLength = length(drl_env.x.tAir.val(:,1)); % the length (array size) of the simulated data
-    compareLength = min(mesLength, simLength);
+    % mesLength = length(v.tAir.val(:,1)); % the length (array size) of the measurement data
+    % simLength = length(drl_env.x.tAir.val(:,1)); % the length (array size) of the simulated data
+    % compareLength = min(mesLength, simLength);
     
     % Apply the multiplier to drl_env.a.rhIn values
-    multiplier_rh = 0.61; %0.85; %0.61; %0.83;
-    if exist('multiplier_rh', 'var') && ~isempty(multiplier_rh)
-        drl_env.a.rhIn.val(:,2) = drl_env.a.rhIn.val(:,2) * multiplier_rh;
-    end
+    % multiplier_rh = 0.61; %0.85; %0.61; %0.83;
+    % if exist('multiplier_rh', 'var') && ~isempty(multiplier_rh)
+    %     drl_env.a.rhIn.val(:,2) = drl_env.a.rhIn.val(:,2) * multiplier_rh;
+    % end
 
     % Add more value for the rParGhLamp
     % measured / simulated = 1.473 / 3.755 = 0.392
-    multiplier_irradiance = 0.39;
-    if exist('multiplier_irradiance', 'var') && ~isempty(multiplier_irradiance)
-        drl_env.a.rParGhLamp.val(:,2) = drl_env.a.rParGhLamp.val(1:compareLength,2) * multiplier_irradiance;
-    end
+    % multiplier_irradiance = 0.39;
+    % if exist('multiplier_irradiance', 'var') && ~isempty(multiplier_irradiance)
+    %     drl_env.a.rParGhLamp.val(:,2) = drl_env.a.rParGhLamp.val(1:compareLength,2) * multiplier_irradiance;
+    % end
     
     % % Added PAR from sun and lamp
     % sunLampIrradiance = (drl_env.a.rParGhSun.val(1:compareLength,2)+drl_env.a.rParGhLamp.val(1:compareLength,2));
@@ -265,10 +259,7 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
     co2_in = drl_env.a.co2InPpm.val(:, 2);           % Indoor co2
     PAR_in = drl_env.a.rParGhSun.val(:, 2) + drl_env.a.rParGhLamp.val(:, 2); % PAR inside
 
-    % For fruit growth
-    % drl_env.x.cLeaf.val ;     
-    % drl_env.x.cStem.val     
-    % drl_env.x.cFruit.val 
+    % For fruit growth 
     fruit_leaf = drl_env.x.cLeaf.val(:, 2); % Fruit leaf
     fruit_stem = drl_env.x.cStem.val(:, 2); % Fruit stem
     fruit_dw = drl_env.x.cFruit.val(:, 2); % Fruit dry weight
@@ -277,10 +268,6 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
     save('drl-env.mat', 'time', 'temp_in', 'rh_in', 'co2_in', 'PAR_in', 'fruit_leaf', 'fruit_stem', 'fruit_dw');
 
     %% Print the values in tabular format
-    % fprintf('Time (s)\tIndoor Temp (°C)\tIndoor Humidity (%%)\tIndoor CO2 (ppm)\tPAR Inside (W/m²)\tFruit Dry Weight (g/m²)\n');
-    % for i = 1:length(time)
-    %     fprintf('%f\t%f\t%f\t%f\t%f\t%f\n', time(i), temp_in(i), rh_in(i), co2_in(i), PAR_in(i), fruit_dw(i));
-    % end
     fprintf('Time (s)\tIndoor Temp (°C)\tIndoor Humidity (%%)\tIndoor CO2 (ppm)\tPAR Inside (W/m²)\tFruit Dry Weight (g/m²)\n');
     for i = 1:length(time)
         fprintf('%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n', time(i), temp_in(i), rh_in(i), co2_in(i), PAR_in(i), fruit_dw(i));
