@@ -317,7 +317,6 @@ class ServiceFunctions:
         - broker: MQTT broker address
         - port: MQTT broker port
         - topic: MQTT topic to publish data to
-        
         '''
 
         def on_connect(client, userdata, flags, reason_code, properties):
