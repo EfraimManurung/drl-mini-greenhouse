@@ -139,26 +139,29 @@ class ServiceFunctions:
         
         return vaporPres
     
-    def plot_all_data(self, _data, time, co2_in, temp_in, rh_in, PAR_in, fruit_leaf, fruit_stem, fruit_dw, ventilation, toplights, heater, rewards):
+    def plot_all_data(self, _data, time, co2_in, temp_in, rh_in, PAR_in, fruit_leaf, fruit_stem, fruit_dw, fruit_cbuf, fruit_tcansum, ventilation, toplights, heater, rewards):
         '''
-        Plot all the paremeters to make it easier to see.
+        Plot all the parameters to make it easier to see.
         
         Parameters:
         - time: List of time values
         - co2_in: List of CO2 values
         - temp_in: List of temperature values
         - rh_in: List of relative humidity values
-        - par_in: List of PAR values
+        - PAR_in: List of PAR values
         - fruit_leaf: List of fruit leaf values
         - fruit_stem: List of fruit stem values
         - fruit_dw: List of fruit dry weight values
+        - fruit_cbuf: List of fruit carbohydrate buffer values
+        - fruit_tcansum: List of fruit total canopy sum values
         - ventilation: List of ventilation control values
         - toplights: List of toplights control values
         - heater: List of heater control values
+        - rewards: List of reward values
         '''
         
         # Create subplots with 4 rows and 3 columns
-        fig, axes = plt.subplots(nrows=4, ncols=3, figsize=(15, 10))
+        fig, axes = plt.subplots(nrows=5, ncols=3, figsize=(18, 12))
         
         # Data to be plotted along with their titles
         data = [
@@ -169,6 +172,8 @@ class ServiceFunctions:
             (fruit_leaf, r'Fruit Leaf [mg (CH$_2$O) m$^{-2}$]'),
             (fruit_stem, r'Fruit Stem [mg (CH$_2$O) m$^{-2}$]'),
             (fruit_dw, r'Fruit Dry Weight [mg (CH$_2$O) m$^{-2}$]'),
+            (fruit_cbuf, r'Fruit Carbohydrate Buffer [mg (CH$_2$O) m$^{-2}$]'),
+            (fruit_tcansum, r'Fruit Total Canopy Sum [mg (CH$_2$O) m$^{-2}$]'),
             (ventilation, 'Ventilation [-]'),
             (toplights, 'Toplights [-]'),
             (heater, 'Heater [-]'),
@@ -177,29 +182,25 @@ class ServiceFunctions:
         
         if _data <= 4:
             # Plot each dataset in a subplot
-            for i, (ax, (y_data, title)) in enumerate(zip(axes.flatten(), data)):
+            for ax, (y_data, title) in zip(axes.flatten(), data):
                 ax.plot(time, y_data)  # Plot data
-                # ax.set_title(title)  # Set the title of sthe subplot
                 ax.set_xlabel('Time')  # Set the x-axis label
                 ax.set_ylabel(title)  # Set the y-axis label
                 ax.tick_params(axis='x', rotation=45)  # Rotate x-axis labels for readability
                 ax.set_xticks(range(len(time)))  # Set the positions of the ticks on the x-axis
                 ax.set_xticklabels(time, rotation=45, ha='right')  # Set the tick labels on the x-axis
-           
-        elif _data >= 5: 
+        else:
             # Set x-axis labels at 4-hour intervals
             interval = 2 * 12  # 4 hours * 12 (5-minute intervals per hour)
             hourly_indices = np.arange(0, len(time), interval)
             time_hourly_labels = [time[i] for i in hourly_indices]
             
             # Plot each dataset in a subplot
-            for i, (ax, (y_data, title)) in enumerate(zip(axes.flatten(), data)):
+            for ax, (y_data, title) in zip(axes.flatten(), data):
                 ax.plot(time, y_data)  # Plot data
                 ax.set_xlabel('Time')  # Set the x-axis label
                 ax.set_ylabel(title)  # Set the y-axis label
                 ax.tick_params(axis='x', rotation=45)  # Rotate x-axis labels for readability
-                
-                # Set the x-axis ticks and labels at 4-hour intervals
                 ax.set_xticks(hourly_indices)  # Set the positions of the ticks on the x-axis
                 ax.set_xticklabels(time_hourly_labels, rotation=45, ha='right')  # Set the tick labels on the x-axis
             
@@ -207,7 +208,7 @@ class ServiceFunctions:
         plt.tight_layout()
         plt.show()
         
-    def export_to_excel(self, filename, time, co2_in, temp_in, rh_in, PAR_in, fruit_leaf, fruit_stem, fruit_dw, ventilation, toplights, heater, rewards):
+    def export_to_excel(self, filename, time, co2_in, temp_in, rh_in, PAR_in, fruit_leaf, fruit_stem, fruit_dw, fruit_cbuf, fruit_tcansum, ventilation, toplights, heater, rewards):
         '''
         Export all the appended data to an Excel file.
         
@@ -217,18 +218,20 @@ class ServiceFunctions:
         - co2_in: List of CO2 values
         - temp_in: List of temperature values
         - rh_in: List of relative humidity values
-        - par_in: List of PAR values
+        - PAR_in: List of PAR values
         - fruit_leaf: List of fruit leaf values
         - fruit_stem: List of fruit stem values
         - fruit_dw: List of fruit dry weight values
+        - fruit_cbuf: List of fruit carbohydrate buffer values
+        - fruit_tcansum: List of fruit total canopy sum values
         - ventilation: List of ventilation control values
         - toplights: List of toplights control values
         - heater: List of heater control values
-        - rewards: List of rewards values
+        - rewards: List of reward values
         '''
         
         # Print the lengths of each list
-        print(f"Lengths -> time: {len(time)}, co2_in: {len(co2_in)}, temp_in: {len(temp_in)}, rh_in: {len(rh_in)}, PAR_in: {len(PAR_in)}, fruit_leaf: {len(fruit_leaf)}, fruit_stem: {len(fruit_stem)}, fruit_dw: {len(fruit_dw)}, ventilation: {len(ventilation)}, toplights: {len(toplights)}, heater: {len(heater)}, rewards: {len(rewards)}")
+        print(f"Lengths -> time: {len(time)}, co2_in: {len(co2_in)}, temp_in: {len(temp_in)}, rh_in: {len(rh_in)}, PAR_in: {len(PAR_in)}, fruit_leaf: {len(fruit_leaf)}, fruit_stem: {len(fruit_stem)}, fruit_dw: {len(fruit_dw)}, fruit_cbuf: {len(fruit_cbuf)}, fruit_tcansum: {len(fruit_tcansum)}, ventilation: {len(ventilation)}, toplights: {len(toplights)}, heater: {len(heater)}, rewards: {len(rewards)}")
         
         data = {
             'Time': time,
@@ -239,6 +242,8 @@ class ServiceFunctions:
             'Fruit leaf': fruit_leaf,
             'Fruit stem': fruit_stem,
             'Fruit Dry Weight': fruit_dw,
+            'Fruit Carbohydrate Buffer': fruit_cbuf,
+            'Fruit Total Canopy Sum': fruit_tcansum,
             'Ventilation': ventilation,
             'Toplights': toplights,
             'Heater': heater,
@@ -254,7 +259,6 @@ class ServiceFunctions:
         df.to_excel(filename, index=False)
         print(f"Data successfully exported to {filename}")
 
-        
     def format_data_in_JSON(self, time, ventilation, toplights, heater):
         '''
         Convert data to JSON format and print it.

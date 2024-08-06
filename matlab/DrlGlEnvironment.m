@@ -88,6 +88,7 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
 
     if isempty(indoorFile)
         drl_indoor = [];
+        disp('INDOOR FILE EMPTY!! FOR DEBUGING')
     else
         % Load indoor measurements from the .mat file
         indoor_file = load(indoorFile);
@@ -107,13 +108,13 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
         % convert co2 from ppm to mg m^{-3}
         % drl_indoor(:,4) = 1e6 * co2ppm2dens(drl_indoor(:,2), drl_indoor(:,4));
         
-        % Print the converted RH 
+        % %Print the converted RH 
         % disp('Converted RH concentration (Pa):');
         % for i = 1:length(drl_indoor(:,3))
         %     fprintf('  %.2f\n', drl_indoor(i,3));
         % end
-
-        % Print the converted CO2 concentration
+        % 
+        % %Print the converted CO2 concentration
         % disp('Converted CO2 concentration (mg m^{-3}):');
         % for i = 1:length(drl_indoor(:,4))
         %     fprintf('  %.2f\n', drl_indoor(i,4));
@@ -126,16 +127,42 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
     v.rhAir = DynamicElement('v.rhAir', [floor(indoor_iot(:,1)) indoor_iot(:,3)]);
     v.co2Air = DynamicElement('v.co2Air', [floor(indoor_iot(:,1)) indoor_iot(:,4)]);
     v.iInside = DynamicElement('v.iInside', [floor(indoor_iot(:,1)) indoor_iot(:,5)]);
-   
     
     %% Create an instance of createGreenLight with the default Vanthoor parameters
-    
     drl_env = createGreenLightModel(lampType, outdoor_iot, startTime, controls_iot, drl_indoor);
 
     % Parameters for mini-greenhouse
     setParamsMiniGreenhouse(drl_env);      % set greenhouse structure
     setMiniGreenhouseLedParams(drl_env);   % set lamp params
-    %% Control parameters
+
+    %% Create the the crop component of the GreenLight model 
+    %
+    %% Crop model
+    
+    % Information from setGlStates.m
+    % Carbohydrates in buffer [mg{CH2O} m^{-2}]
+    % addState(gl, 'cBuf');
+ 
+    % Carbohydrates in leaves [mg{CH2O} m^{-2}]
+    % addState(gl, 'cLeaf');
+    
+    % Carbohydrates in stem [mg{CH2O} m^{-2}]
+    % addState(gl, 'cStem');
+    
+    % Carbohydrates in fruit [mg{CH2O} m^{-2}]
+    % addState(gl, 'cFruit');
+    
+    % Crop development stage [°C day]
+    % addState(gl, 'tCanSum');
+
+    % Crop development stage [°C day s^{-1}]
+    % Equation 8 [2]
+    % setOde(gl, 'tCanSum', 1/86400*x.tCan);
+
+    % Equation 9 [2] from A methodology for model-based greenhouse design: Part 2,
+    % description and validation of a tomato yield model
+    % The 24 h mean canopy temperature was approximated by a first order differential equation:
+    % see the paper
 
     % Set initial values for crop
     % start with 3.12 plants/m2, assume they are each 2 g = 6240 mg/m2.
@@ -145,29 +172,33 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
         drl_env.x.cLeaf.val = 0.7*6240;     
         drl_env.x.cStem.val = 0.25*6240;    
         drl_env.x.cFruit.val = 0.05*6240;   
+        drl_env.x.cBuf.val = 0;
+        drl_env.x.tCanSum.val = 0;
     else 
         % Load DRL controls from the .mat file
         fruit_file = load(fruitFile);
-        
+
         % Print the fruit growth data
         disp('Fruit growth: ');
         fprintf('          time: %.2f\n', fruit_file.time);
         % fprintf('    fruit_leaf: %.2f\n', fruit_file.fruit_leaf);
         % fprintf('    fruit_stem: %.2f\n', fruit_file.fruit_stem);
         fprintf('      fruit_dw: %.2f\n', fruit_file.fruit_dw);
-        
+
         % Ensure that the required fields exist in fruit_file
-        required_fields = {'time', 'fruit_leaf', 'fruit_stem', 'fruit_dw'};
+        required_fields = {'time', 'fruit_leaf', 'fruit_stem', 'fruit_dw', 'fruit_cbuf', 'fruit_tcansum'};
         for i = 1:length(required_fields)
             if ~isfield(fruit_file, required_fields{i})
                 error(['The fruit file does not contain the required field: ', required_fields{i}]);
             end
         end
-        
+
         % Assign the loaded fruit data to the corresponding fields in drl_env
         drl_env.x.cLeaf.val = fruit_file.fruit_leaf;     
         drl_env.x.cStem.val = fruit_file.fruit_stem;    
         drl_env.x.cFruit.val = fruit_file.fruit_dw;
+        drl_env.x.cBuf.val = fruit_file.fruit_cbuf;
+        drl_env.x.tCanSum.val = fruit_file.fruit_tcansum;
     end
     
     %% Run simulation
@@ -254,25 +285,26 @@ function DrlGlEnvironment(seasonLength, firstDay, controlsFile, outdoorFile, ind
     % 
     %% Extract the simulated data from the DRL environment
     time = drl_env.x.tAir.val(:, 1);                    % Time
-    temp_in = drl_env.x.tAir.val(:, 2);       % Indoor temperature
-    rh_in = drl_env.a.rhIn.val(:, 2);          % Indoor humidity
-    co2_in = drl_env.a.co2InPpm.val(:, 2);           % Indoor co2
+    temp_in = drl_env.x.tAir.val(:, 2);                 % Indoor temperature
+    rh_in = drl_env.a.rhIn.val(:, 2);                   % Indoor humidity
+    co2_in = drl_env.a.co2InPpm.val(:, 2);              % Indoor CO2
     PAR_in = drl_env.a.rParGhSun.val(:, 2) + drl_env.a.rParGhLamp.val(:, 2); % PAR inside
-
-    % For fruit growth 
-    fruit_leaf = drl_env.x.cLeaf.val(:, 2); % Fruit leaf
-    fruit_stem = drl_env.x.cStem.val(:, 2); % Fruit stem
-    fruit_dw = drl_env.x.cFruit.val(:, 2); % Fruit dry weight
     
+    % For fruit growth 
+    fruit_leaf = drl_env.x.cLeaf.val(:, 2);             % Fruit leaf
+    fruit_stem = drl_env.x.cStem.val(:, 2);             % Fruit stem
+    fruit_dw = drl_env.x.cFruit.val(:, 2);              % Fruit dry weight
+    fruit_cbuf = drl_env.x.cBuf.val(:, 2);              % Carbohydrates in buffer [mg{CH2O} m^{-2} s^{-1}]
+    fruit_tcansum = drl_env.x.tCanSum.val(:, 2);        % Crop development stage [°C day s^{-1}]
+        
     % Save the extracted data to a .mat file
-    save('drl-env.mat', 'time', 'temp_in', 'rh_in', 'co2_in', 'PAR_in', 'fruit_leaf', 'fruit_stem', 'fruit_dw');
-
+    save('drl-env.mat', 'time', 'temp_in', 'rh_in', 'co2_in', 'PAR_in', 'fruit_leaf', 'fruit_stem', 'fruit_dw', 'fruit_cbuf', 'fruit_tcansum');
+    
     %% Print the values in tabular format
-    fprintf('Time (s)\tIndoor Temp (°C)\tIndoor Humidity (%%)\tIndoor CO2 (ppm)\tPAR Inside (W/m²)\tFruit Dry Weight (g/m²)\n');
+    fprintf('Time (s)\tIndoor Temp (°C)\tIndoor Humidity (%%)\tIndoor CO2 (ppm)\tPAR Inside (W/m²)\tFruit Dry Weight (g/m²)\tFruit Carbohydrates Buffer [mg{CH2O} m^{-2} s^{-1}]\tCrop Development Stage [°C day s^{-1}]\n');
     for i = 1:length(time)
-        fprintf('%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n', time(i), temp_in(i), rh_in(i), co2_in(i), PAR_in(i), fruit_dw(i));
+        fprintf('%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n', time(i), temp_in(i), rh_in(i), co2_in(i), PAR_in(i), fruit_dw(i), fruit_cbuf(i), fruit_tcansum(i));
     end
-
 
     %% Clear the workspace
     % clear;

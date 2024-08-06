@@ -166,6 +166,8 @@ class MiniGreenhouse(gym.Env):
             - fruit_leaf
             - fruit_stem
             - fruit_dw
+            - fruit_cbuf
+            - fruit_tcansum
         
         The state x(t) variables:
         - Temperature (°C) 
@@ -176,8 +178,8 @@ class MiniGreenhouse(gym.Env):
         
         # Define observation and action spaces
         self.observation_space = Box(
-            low=np.array([0.0, 10.00, 0.00, 0.00, 0, 0, 0]), # In order: CO2, Temperature, Humidity, PAR-in, Fruit Leaf, Fruit Stem, and Fruit Dry Weight
-            high=np.array([2000.0, 30.00, 90.00, 25.00, np.inf, np.inf, np.inf]), 
+            low=np.array([0.0, 10.00, 0.00, 0.00, 0, 0, 0, -10.00, -10.00]), # In order: CO2, Temperature, Humidity, PAR-in, Fruit Leaf, Fruit Stem, and Fruit Dry Weight
+            high=np.array([2000.0, 30.00, 90.00, 25.00, np.inf, np.inf, np.inf, np.inf, np.inf]), 
             dtype=np.float64
         )
         
@@ -186,64 +188,6 @@ class MiniGreenhouse(gym.Env):
             high=np.array([1, 1, 1], dtype=np.float32), 
             dtype=np.float32
         )
-
-    def print_and_save_all_data(self, _file_name):
-        '''
-        Print all the appended data.
-        '''
-        print("")
-        print("")
-        print("-------------------------------------------------------------------------------------")
-        print("Print all the appended data.")
-        # Print lengths of each list to identify discrepancies
-        print(f"Length of Time: {len(self.time)}")
-        print(f"Length of CO2 In: {len(self.co2_in)}")
-        print(f"Length of Temperature In: {len(self.temp_in)}")
-        print(f"Length of RH In: {len(self.rh_in)}")
-        print(f"Length of PAR In: {len(self.PAR_in)}")
-        print(f"Length of Fruit leaf: {len(self.fruit_leaf)}")
-        print(f"Length of Fruit stem: {len(self.fruit_stem)}")
-        print(f"Length of Fruit Dry Weight: {len(self.fruit_dw)}")
-        print(f"Length of Ventilation: {len(self.ventilation_list)}")
-        print(f"Length of toplights: {len(self.toplights_list)}")
-        print(f"Length of Heater: {len(self.heater_list)}")
-        print(f"Length of Rewards: {len(self.rewards_list)}")
-        data = {
-            'Time': self.time,
-            'CO2 In': self.co2_in,
-            'Temperature In': self.temp_in,
-            'RH In': self.rh_in,
-            'PAR In': self.PAR_in,
-            'Fruit leaf': self.fruit_leaf,
-            'Fruit stem': self.fruit_stem,
-            'Fruit Dry Weight': self.fruit_dw,
-            'Ventilation': self.ventilation_list,
-            'Toplights': self.toplights_list,
-            'Heater': self.heater_list,
-            'Rewards': self.rewards_list
-        }
-        
-        df = pd.DataFrame(data)
-        print(df)
-        
-        # Calculate time_steps for plot and save it on the excel file
-        time_max = (self.max_steps + 1) * 1200 # for e.g. 3 steps * 1200 (20 minutes) = 60 minutes
-        time_steps_seconds = np.linspace(300, time_max, (self.max_steps + 1)  * 4)  # Time steps in seconds
-        time_steps_hours = time_steps_seconds / 3600  # Convert seconds to hours
-        time_steps_formatted = [str(timedelta(hours=h))[:-3] for h in time_steps_hours]  # Format to HH:MM
-        print("time_steps_plot (in HH:MM format):", time_steps_formatted)
-        
-        # Save all the data in an excel file
-        self.service_functions.export_to_excel(_file_name, time_steps_formatted, self.co2_in, self.temp_in, self.rh_in, \
-                                            self.PAR_in, self.fruit_leaf, self.fruit_stem, \
-                                            self.fruit_dw, self.ventilation_list, self.toplights_list, \
-                                            self.heater_list, self.rewards_list)
-        
-        # Show all the data in figures
-        self.service_functions.plot_all_data(self.max_steps, time_steps_formatted, self.co2_in, self.temp_in, self.rh_in, \
-                                            self.PAR_in, self.fruit_leaf, self.fruit_stem, \
-                                            self.fruit_dw, self.ventilation_list, self.toplights_list, \
-                                            self.heater_list, self.rewards_list)
         
     def init_controls(self):
         '''
@@ -302,7 +246,9 @@ class MiniGreenhouse(gym.Env):
         new_fruit_leaf = data['fruit_leaf'].flatten()[-4:]
         new_fruit_stem = data['fruit_stem'].flatten()[-4:]
         new_fruit_dw = data['fruit_dw'].flatten()[-4:]
-        
+        new_fruit_cbuf = data['fruit_cbuf'].flatten()[-4:]
+        new_fruit_tcansum = data['fruit_tcansum'].flatten()[-4:]
+
         if not hasattr(self, 'time'):
             self.time = new_time
             self.co2_in = new_co2_in
@@ -312,6 +258,8 @@ class MiniGreenhouse(gym.Env):
             self.fruit_leaf = new_fruit_leaf
             self.fruit_stem = new_fruit_stem
             self.fruit_dw = new_fruit_dw
+            self.fruit_cbuf = new_fruit_cbuf
+            self.fruit_tcansum = new_fruit_tcansum
         else:
             self.time = np.concatenate((self.time, new_time))
             self.co2_in = np.concatenate((self.co2_in, new_co2_in))
@@ -321,6 +269,9 @@ class MiniGreenhouse(gym.Env):
             self.fruit_leaf = np.concatenate((self.fruit_leaf, new_fruit_leaf))
             self.fruit_stem = np.concatenate((self.fruit_stem, new_fruit_stem))
             self.fruit_dw = np.concatenate((self.fruit_dw, new_fruit_dw))
+            self.fruit_cbuf = np.concatenate((self.fruit_cbuf, new_fruit_cbuf))
+            self.fruit_tcansum = np.concatenate((self.fruit_tcansum, new_fruit_tcansum))
+        
 
     def reset(self, *, seed=None, options=None):
         '''
@@ -342,13 +293,15 @@ class MiniGreenhouse(gym.Env):
         '''
         
         return np.array([
-            self.co2_in[-1], 
-            self.temp_in[-1], 
-            self.rh_in[-1], 
-            self.PAR_in[-1], 
-            self.fruit_leaf[-1], 
-            self.fruit_stem[-1], 
-            self.fruit_dw[-1]
+            self.co2_in[-1],
+            self.temp_in[-1],
+            self.rh_in[-1],
+            self.PAR_in[-1],
+            self.fruit_leaf[-1],
+            self.fruit_stem[-1],
+            self.fruit_dw[-1],
+            self.fruit_cbuf[-1],
+            self.fruit_tcansum[-1]
         ], np.float32)
        
 
@@ -550,9 +503,11 @@ class MiniGreenhouse(gym.Env):
             'time': self.time[-1:].astype(float).reshape(-1, 1),
             'fruit_leaf': self.fruit_leaf[-1:].astype(float).reshape(-1, 1),
             'fruit_stem': self.fruit_stem[-1:].astype(float).reshape(-1, 1),
-            'fruit_dw': self.fruit_dw[-1:].astype(float).reshape(-1, 1)
+            'fruit_dw': self.fruit_dw[-1:].astype(float).reshape(-1, 1),
+            'fruit_cbuf': self.fruit_cbuf[-1:].astype(float).reshape(-1, 1),
+            'fruit_tcansum': self.fruit_tcansum[-1:].astype(float).reshape(-1, 1)
         }
-        
+
         # Save the fruit growth to .mat file
         sio.savemat('fruit.mat', fruit_growth)
         
@@ -580,7 +535,69 @@ class MiniGreenhouse(gym.Env):
         truncated = False
     
         return self.observation(), _reward, self.done(), truncated, {}
+    
+    def print_and_save_all_data(self, _file_name):
+        '''
+        Print all the appended data.
+        '''
+        print("")
+        print("")
+        print("-------------------------------------------------------------------------------------")
+        print("Print all the appended data.")
+        # Print lengths of each list to identify discrepancies
+        print(f"Length of Time: {len(self.time)}")
+        print(f"Length of CO2 In: {len(self.co2_in)}")
+        print(f"Length of Temperature In: {len(self.temp_in)}")
+        print(f"Length of RH In: {len(self.rh_in)}")
+        print(f"Length of PAR In: {len(self.PAR_in)}")
+        #print(f"Length of Fruit leaf: {len(self.fruit_leaf)}")
+        #print(f"Length of Fruit stem: {len(self.fruit_stem)}")
+        print(f"Length of Fruit Dry Weight: {len(self.fruit_dw)}")
+        print(f"Length of Fruit cBuf: {len(self.fruit_cbuf)}")
+        print(f"Length of Fruit tCanSum: {len(self.fruit_tcansum)}")
+        print(f"Length of Ventilation: {len(self.ventilation_list)}")
+        print(f"Length of toplights: {len(self.toplights_list)}")
+        print(f"Length of Heater: {len(self.heater_list)}")
+        print(f"Length of Rewards: {len(self.rewards_list)}")
+        data = {
+            'Time': self.time,
+            'CO2 In': self.co2_in,
+            'Temperature In': self.temp_in,
+            'RH In': self.rh_in,
+            'PAR In': self.PAR_in,
+            #'Fruit leaf': self.fruit_leaf,
+            #'Fruit stem': self.fruit_stem,
+            'Fruit Dry Weight': self.fruit_dw,
+            'Fruit cBuf':self.fruit_cbuf,
+            'Fruit tCanSum': self.fruit_tcansum,
+            'Ventilation': self.ventilation_list,
+            'Toplights': self.toplights_list,
+            'Heater': self.heater_list,
+            'Rewards': self.rewards_list
+        }
+        
+        df = pd.DataFrame(data)
+        print(df)
+        
+        # Calculate time_steps for plot and save it on the excel file
+        time_max = (self.max_steps + 1) * 1200 # for e.g. 3 steps * 1200 (20 minutes) = 60 minutes
+        time_steps_seconds = np.linspace(300, time_max, (self.max_steps + 1)  * 4)  # Time steps in seconds
+        time_steps_hours = time_steps_seconds / 3600  # Convert seconds to hours
+        time_steps_formatted = [str(timedelta(hours=h))[:-3] for h in time_steps_hours]  # Format to HH:MM
+        print("time_steps_plot (in HH:MM format):", time_steps_formatted)
+        
+        # Save all the data in an excel file
+        self.service_functions.export_to_excel(_file_name, time_steps_formatted, self.co2_in, self.temp_in, self.rh_in,
+                                               self.PAR_in, self.fruit_leaf, self.fruit_stem,
+                                               self.fruit_dw, self.fruit_cbuf, self.fruit_tcansum, self.ventilation_list, self.toplights_list,
+                                               self.heater_list, self.rewards_list)
+
+        self.service_functions.plot_all_data(self.max_steps, time_steps_formatted, self.co2_in, self.temp_in, self.rh_in,
+                                             self.PAR_in, self.fruit_leaf, self.fruit_stem,
+                                             self.fruit_dw, self.fruit_cbuf, self.fruit_tcansum, self.ventilation_list, self.toplights_list,
+                                             self.heater_list, self.rewards_list)
 
     # Ensure to properly close the MATLAB engine when the environment is no longer used
     def __del__(self):
         self.eng.quit()
+        
