@@ -13,6 +13,7 @@ from ray.rllib.algorithms.algorithm import Algorithm
 
 # Import supporting libraries
 import time
+import matplotlib.pyplot as plt  # Import matplotlib for plotting
 
 # Import libraries needed for PPO algorithm
 from ray.rllib.algorithms.ppo import PPOConfig
@@ -29,15 +30,16 @@ my_new_ppo = Algorithm.from_checkpoint('model/model-minigreenhouse-config-2')
 # Call the MiniGreenhouse instance
 env = MiniGreenhouse({"flag_run": True,
                         "first_day": 1,
-                        "season_length": 1/72,
+                        "season_length": 1/72, 
                         "online_measurements": False,
-                        "max_steps": 6 
+                        "max_steps": 72
                         })
 
 # Get the initial observation (should be: [0.0] for the starting position).
 obs, info = env.reset()
 terminated = truncated = False
-total_reward = 0.0
+total_rewards = 0.0
+total_rewards_list = [] # List to collect rewards
 
 # Play one episode
 while not terminated and not truncated:    
@@ -52,7 +54,15 @@ while not terminated and not truncated:
     obs, reward, terminated, _, info = env.step(action)
 
     # sum up rewards for reporting purposes
-    total_reward += reward
+    total_rewards += reward
+    total_rewards_list.append(total_rewards)  # Append the total reward to the list
 
 # Report results.
-print(f"Played 1 episode; total-reward={total_reward}")
+print(f"Played 1 episode; total-reward={total_rewards}")
+
+# Plot the cumulative rewards
+plt.plot(total_rewards_list)
+plt.xlabel('Steps')
+plt.ylabel('Cumulative Reward')
+plt.title('Cumulative Reward per Step')
+plt.show()

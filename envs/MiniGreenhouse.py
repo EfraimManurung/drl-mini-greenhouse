@@ -466,6 +466,14 @@ class MiniGreenhouse(gym.Env):
         Returns:
             New observation, reward, terminated-flag (frome done method), truncated-flag, info-dict (empty).
         '''
+         
+        # Increment the current step
+        self.current_step += 1
+        print("")
+        print("")
+        print("----------------------------------")
+        print("CURRENT STEPS: ", self.current_step)
+
         print("ACTION: ", _action)
         
         # Convert actions to discrete values
@@ -512,13 +520,6 @@ class MiniGreenhouse(gym.Env):
         # Save control variables to .mat file
         sio.savemat('controls.mat', controls)
         
-        # Increment the current step
-        self.current_step += 1
-        print("")
-        print("")
-        print("----------------------------------")
-        print("CURRENT STEPS: ", self.current_step)
-
         # Update the season_length and first_day
         # 1 / 72 is 20 minutes in 24 hours, the calculation look like this
         # 1 / 72 * 24 [hours] * 60 [minutes . hours ^ -1] = 20 minutes 
