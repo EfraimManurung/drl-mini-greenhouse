@@ -49,6 +49,30 @@ Project sources:
 Other sources:
 - https://github.com/davkat1/GreenLight
 - 
+
+Journal and papers from David Katzin the GreenLight model:
+- The informations in here we got it from setGlOdes.m file
+    Based on the electronic appendices (the case of a Dutch greenhouse) of:
+        [1] Vanthoor, B., Stanghellini, C., van Henten, E. J. & de Visser, P. H. B. 
+            A methodology for model-based greenhouse design: Part 1, a greenhouse climate 
+            model for a broad range of designs and climates. Biosyst. Eng. 110, 363–377 (2011).
+        [2] Vanthoor, B., de Visser, P. H. B., Stanghellini, C. & van Henten, E. J. 
+            A methodology for model-based greenhouse design: Part 2, description and 
+            validation of a tomato yield model. Biosyst. Eng. 110, 378–395 (2011).
+    These are also available as Chapters 8 and 9, respecitvely, of
+        [3] Vanthoor, B. A model based greenhouse design method. (Wageningen University, 2011).
+    Other sources are:
+        [4] De Zwart, H. F. Analyzing energy-saving options in greenhouse cultivation 
+            using a simulation model. (Landbouwuniversiteit Wageningen, 1996).
+    The model is described and evaluated in:
+        [5] Katzin, D., van Mourik, S., Kempkes, F., & Van Henten, E. J. (2020). 
+            GreenLight - An open source model for greenhouses with supplemental 
+            lighting: Evaluation of heat requirements under LED and HPS lamps. 
+            Biosystems Engineering, 194, 61–81. https://doi.org/10.1016/j.biosystemseng.2020.03.010
+    The model is further described in:
+        [6] Katzin, D. (2021). Energy saving by LED lighting in greenhouses: 
+            a process-based modelling approach (PhD thesis, Wageningen University).
+            https://doi.org/10.18174/544434
 '''
 
 # Import Farama foundation's gymnasium
@@ -158,16 +182,16 @@ class MiniGreenhouse(gym.Env):
         '''
         Define the observation and action spaces.
         
-        Based on the observation
-            - co2_in
-            - temp_in
-            - rh_in
-            - PAR_in
-            - fruit_leaf
-            - fruit_stem
-            - fruit_dw
-            - fruit_cbuf
-            - fruit_tcansum
+        Based on the observation of the mini-greenhouse system                          Explanation 
+            - co2_in: CO2 inside the mini-greenhouse [ppm]
+            - temp_in: Temperature inside the mini-greenhouse [°C]
+            - rh_in: Relative humidity in percentage in the mini-greenhouse [%]
+            - PAR_in: Global radiation inside the mini-greenhouse [W m^{-2}]
+            - fruit_leaf: Carbohydrates in leaves [mg{CH2O} m^{-2}]                     Equation 4 [2]
+            - fruit_stem: Carbohydrates in stem [mg{CH2O} m^{-2}]                       Equation 6 [2]
+            - fruit_dw: Carbohydrates in fruit dry weight [mg{CH2O} m^{-2}]             Equation 2 [2], Equation A44 [5]
+            - fruit_cbuf: Carbohydrates in buffer [mg{CH2O} m^{-2}]                     Equation 1 [2]
+            - fruit_tcansum: Crop development stage [°C day]                            Equation 8 [2]
         
         The state x(t) variables:
         - Temperature (°C) 
@@ -287,6 +311,8 @@ class MiniGreenhouse(gym.Env):
     def observation(self):
         '''
         Get the observation of the environment for every state.
+        
+        
         
         Returns:
         array: The observation space of the environment.
