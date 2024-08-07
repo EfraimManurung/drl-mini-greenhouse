@@ -41,14 +41,14 @@ config.training(
 algo = config.build()
 
 # Train the algorithm
-for episode in tqdm(range(10)):  # Train for 250 episodes
+for episode in tqdm(range(300)):  # Train for 250 episodes
     result = algo.train()  # Perform training
     # if episode % 5 == 0:  # Save a checkpoint every 5 episodes
     #     checkpoint_dir = algo.save().checkpoint.path
     #     print(f"Checkpoint saved in directory {checkpoint_dir}")
         
 # Save the model checkpoint
-save_result = algo.save('model/model-minigreenhouse-config-test')
+save_result = algo.save('model/model-minigreenhouse-config-3')
 
 path_to_checkpoint = save_result
 print(

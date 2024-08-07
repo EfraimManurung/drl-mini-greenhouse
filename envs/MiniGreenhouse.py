@@ -187,10 +187,10 @@ class MiniGreenhouse(gym.Env):
             - temp_in: Temperature inside the mini-greenhouse [°C]
             - rh_in: Relative humidity in percentage in the mini-greenhouse [%]
             - PAR_in: Global radiation inside the mini-greenhouse [W m^{-2}]
-            - fruit_leaf: Carbohydrates in leaves [mg{CH2O} m^{-2}]                     Equation 4 [2]
-            - fruit_stem: Carbohydrates in stem [mg{CH2O} m^{-2}]                       Equation 6 [2]
-            - fruit_dw: Carbohydrates in fruit dry weight [mg{CH2O} m^{-2}]             Equation 2 [2], Equation A44 [5]
-            - fruit_cbuf: Carbohydrates in buffer [mg{CH2O} m^{-2}]                     Equation 1 [2]
+            - fruit_leaf: Carbohydrates in leaves [mg{CH2O} m^{-2}]                     Equation 4, 5 [2]
+            - fruit_stem: Carbohydrates in stem [mg{CH2O} m^{-2}]                       Equation 6, 7 [2]
+            - fruit_dw: Carbohydrates in fruit dry weight [mg{CH2O} m^{-2}]             Equation 2, 3 [2], Equation A44 [5]
+            - fruit_cbuf: Carbohydrates in buffer [mg{CH2O} m^{-2}]                     Equation 1, 2 [2]
             - fruit_tcansum: Crop development stage [°C day]                            Equation 8 [2]
         
         The state x(t) variables:
